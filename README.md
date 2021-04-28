@@ -10,6 +10,7 @@ a relatively new feature in rust).
 This is meant to be a community project, where I originally attempted to reach out to some 
 potentially interested parties via [twitter](https://twitter.com/nomad421/status/1385690970746990596?s=20).  If you'd like to help, please feel welcome to contribute!
 
+  * [Luiz Irber](https://github.com/luizirber)
   * [Rob](https://github.com/rob-p)
 
 ## Minimum supported Rust version

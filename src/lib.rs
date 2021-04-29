@@ -1,10 +1,18 @@
 use std::mem;
 
-struct Kmer<const K: u16, const B: usize> {
+// compute the number of words required to store a 
+// kmer of length k
+macro_rules! words_for_k{
+       ($k:expr)=>{
+               (31_usize + $k) / 32_usize 
+       }
+   }
+
+struct Kmer<const K: u16, const B: usize > {
     array: [u64; B],
 }
 
-impl<const K: u16, const B: usize> Kmer<K, B> {
+impl<const K: u16, const B: usize > Kmer<K,B> {
     /// construct a new empty k-mer 
     /// it is constructed as poly-A by default
     pub fn new() -> Self {
@@ -30,7 +38,9 @@ mod tests {
     use crate::Kmer;
     #[test]
     fn it_works() {
-        let km = Kmer::<15,1>::new();
+        // currently the { } around the macro are required 
+        // which is .. ugly.
+        let km = Kmer::<15, {words_for_k!(15)}>::new();
         assert_eq!(km.num_bytes(), 8);
         assert_eq!(km.k(), 15);
     }

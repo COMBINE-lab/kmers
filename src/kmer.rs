@@ -3,7 +3,11 @@
 /* crate use */
 use bit_field::BitArray;
 
+/* project use */
+use crate::encoding;
+
 /// Struct to store and use kmer
+#[derive(Debug)]
 pub struct Kmer<P, const K: usize, const B: usize> {
     array: [P; B],
 }
@@ -13,10 +17,18 @@ where
     P: Copy + bit_field::BitField,
 {
     /// construct a new empty k-mer fill with zero by default
-    pub fn new() -> Self {
+    pub fn new<E>(sequence: &[u8], encoder: E) -> Self
+    where
+        E: encoding::Encoder<P, B>,
+    {
         Self {
-            array: [unsafe { std::mem::zeroed() }; B],
+            array: encoder.encode(sequence),
         }
+    }
+
+    /// construct a new k-mer with a slice
+    pub fn with_data(data: [P; B]) -> Self {
+        Self { array: data }
     }
 
     /// returns the value of k for this k-mer
@@ -31,7 +43,7 @@ where
 
     /// get the niest nucleotide
     pub fn get(&self, index: usize) -> P {
-        self.array.get_bits(index..index + 1)
+        self.array.get_bits(index * 2..=index * 2 + 1)
     }
 }
 
@@ -40,7 +52,9 @@ where
     P: Copy + bit_field::BitField,
 {
     fn default() -> Self {
-        Self::new()
+        Self {
+            array: [unsafe { std::mem::zeroed() }; B],
+        }
     }
 }
 
@@ -52,6 +66,8 @@ pub const fn word_for_k<P, const K: usize>() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use encoding::naive;
 
     #[test]
     fn choose_number_of_word() {
@@ -78,43 +94,55 @@ mod tests {
 
     #[test]
     fn u8_k15() {
-        let kmer = Kmer::<u8, 15, { word_for_k::<u8, 15>() }>::new();
+        let kmer = Kmer::<u8, 15, { word_for_k::<u8, 15>() }>::default();
         assert_eq!(kmer.num_bytes(), 4);
         assert_eq!(kmer.k(), 15);
     }
 
     #[test]
     fn u16_k15() {
-        let kmer = Kmer::<u16, 15, { word_for_k::<u16, 15>() }>::new();
+        let kmer = Kmer::<u16, 15, { word_for_k::<u16, 15>() }>::default();
         assert_eq!(kmer.num_bytes(), 4);
         assert_eq!(kmer.k(), 15);
     }
 
     #[test]
     fn u32_k15() {
-        let kmer = Kmer::<u32, 15, { word_for_k::<u32, 15>() }>::new();
+        let kmer = Kmer::<u32, 15, { word_for_k::<u32, 15>() }>::default();
         assert_eq!(kmer.num_bytes(), 4);
         assert_eq!(kmer.k(), 15);
     }
 
     #[test]
     fn u64_k15() {
-        let kmer = Kmer::<u64, 15, { word_for_k::<u64, 15>() }>::new();
+        let kmer = Kmer::<u64, 15, { word_for_k::<u64, 15>() }>::default();
         assert_eq!(kmer.num_bytes(), 8);
         assert_eq!(kmer.k(), 15);
     }
 
     #[test]
     fn u128_k15() {
-        let kmer = Kmer::<u128, 15, { word_for_k::<u128, 15>() }>::new();
+        let kmer = Kmer::<u128, 15, { word_for_k::<u128, 15>() }>::default();
         assert_eq!(kmer.num_bytes(), 16);
         assert_eq!(kmer.k(), 15);
     }
 
     #[test]
-    fn get() {
-        let kmer = Kmer::<u8, 15, { word_for_k::<u8, 15>() }>::new();
+    fn kmer_naive_encoder() {
+        let encoder = naive::Naive::new(naive::Encoding::ACTG);
+        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", encoder);
 
-        assert_eq!(kmer.get(2), 0b00)
+        assert_eq!(kmer.get(0), 0b00);
+        assert_eq!(kmer.get(1), 0b01);
+        assert_eq!(kmer.get(2), 0b10);
+        assert_eq!(kmer.get(3), 0b11);
+
+        let encoder = naive::Naive::new(naive::Encoding::TAGC);
+        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", encoder);
+
+        assert_eq!(kmer.get(0), 0b01);
+        assert_eq!(kmer.get(1), 0b11);
+        assert_eq!(kmer.get(2), 0b00);
+        assert_eq!(kmer.get(3), 0b10);
     }
 }

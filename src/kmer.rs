@@ -17,7 +17,7 @@ where
     P: Copy + bit_field::BitField,
 {
     /// construct a new empty k-mer fill with zero by default
-    pub fn new<E>(sequence: &[u8], encoder: E) -> Self
+    pub fn new<E>(sequence: &[u8], encoder: &E) -> Self
     where
         E: encoding::Encoder<P, B>,
     {
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn kmer_naive_encoder() {
         let encoder = naive::Naive::new(naive::Encoding::ACTG);
-        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", encoder);
+        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", &encoder);
 
         assert_eq!(kmer.get(0), 0b00);
         assert_eq!(kmer.get(1), 0b01);
@@ -138,7 +138,7 @@ mod tests {
         assert_eq!(kmer.get(3), 0b11);
 
         let encoder = naive::Naive::new(naive::Encoding::TAGC);
-        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", encoder);
+        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", &encoder);
 
         assert_eq!(kmer.get(0), 0b01);
         assert_eq!(kmer.get(1), 0b11);

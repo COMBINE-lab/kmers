@@ -60,17 +60,7 @@ where
     /// Convert nucleotide in encoding corresponding 2 bits  
     pub(crate) fn nuc2bits(&self, nuc: u8) -> P {
         let index = 6 - nuc2internal(nuc) * 2;
-
-        println!("Encoding {:?}", self.encoding);
-        println!("Bin enc  {:08b}", self.encoding as u8);
-        println!("index    {}", index);
-        println!(
-            "result   {:08b} >> {} = {:08b}",
-            self.encoding as u8,
-            index,
-            self.encoding as u8 >> index
-        );
-
+	
         P::from((self.encoding as u8 >> index) & 0b11)
     }
 }

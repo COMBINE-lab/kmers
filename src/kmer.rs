@@ -19,7 +19,7 @@ where
     /// construct a new empty k-mer fill with zero by default
     pub fn new<E>(sequence: &[u8], encoder: &E) -> Self
     where
-        E: encoding::Encoder<P, B>,
+        E: encoding::Encoding<P, B>,
     {
         Self {
             array: encoder.encode(sequence),
@@ -66,8 +66,6 @@ pub const fn word_for_k<P, const K: usize>() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use encoding::naive;
 
     #[test]
     fn choose_number_of_word() {
@@ -128,8 +126,20 @@ mod tests {
     }
 
     #[test]
+    fn kmer_with_data() {
+        let data: [u8; 1] = [0b11100100];
+
+        let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::with_data(data);
+
+        assert_eq!(kmer.get(0), 0b00);
+        assert_eq!(kmer.get(1), 0b01);
+        assert_eq!(kmer.get(2), 0b10);
+        assert_eq!(kmer.get(3), 0b11);
+    }
+
+    #[test]
     fn kmer_naive_encoder() {
-        let encoder = naive::Naive::new(naive::Encoding::ACTG);
+        let encoder = encoding::Naive::ACTG;
         let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", &encoder);
 
         assert_eq!(kmer.get(0), 0b00);
@@ -137,7 +147,7 @@ mod tests {
         assert_eq!(kmer.get(2), 0b10);
         assert_eq!(kmer.get(3), 0b11);
 
-        let encoder = naive::Naive::new(naive::Encoding::TAGC);
+        let encoder = encoding::Naive::TAGC;
         let kmer = Kmer::<u8, 4, { word_for_k::<u8, 4>() }>::new(b"ACTG", &encoder);
 
         assert_eq!(kmer.get(0), 0b01);

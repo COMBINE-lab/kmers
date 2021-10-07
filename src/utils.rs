@@ -1,4 +1,27 @@
-//! Many utils function
+//! Many usefull stuff
+
+/// A trait to alias all other required trait
+pub trait Data:
+    std::marker::Copy + std::convert::From<u8> + bit_field::BitField + std::fmt::Debug
+{
+    /// Convert self in u8
+    fn to_u8(&self) -> u8;
+}
+
+macro_rules! impl_data {
+    ( $( $x:ty ),* ) => {
+        $(
+	    impl Data for $x {
+		/// Convert self in u8 warning only lower bit are kept
+		fn to_u8(&self) -> u8 {
+		    self.to_be_bytes()[0]
+		}
+	    }
+        )*
+    };
+}
+
+impl_data!(u8, u16, u32, u64, u128);
 
 /// Compute the number of possible kmer for a value of k
 pub const fn kmer_space(k: u32) -> usize {

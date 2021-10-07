@@ -1,8 +1,33 @@
-/* crate use */
-use bit_field::BitArray;
+//! Naive implementation of encoding
+//! Not the best implementation but you can use any encoding
 
-/* project use */
-use super::*;
+/* crate use */
+use bit_field::BitArray as _;
+
+/* Private function */
+
+fn nuc2internal(nuc: u8) -> u8 {
+    (nuc as u8 >> 1) & 0b11
+}
+
+const INTERNAL2NUC: [u8; 4] = [b'A', b'C', b'T', b'G'];
+
+fn internal2nuc(internal: u8) -> u8 {
+    INTERNAL2NUC[internal as usize]
+}
+
+const fn rev_encoding(encoding: u8) -> u8 {
+    let mut rev = 0;
+
+    rev ^= 0b00 << (6 - ((encoding >> 6) * 2));
+    rev ^= 0b01 << (6 - (((encoding >> 4) & 0b11) * 2));
+    rev ^= 0b10 << (6 - (((encoding >> 2) & 0b11) * 2));
+    rev ^= 0b11 << (6 - ((encoding & 0b11) * 2));
+
+    rev
+}
+
+/* Public interface */
 
 /// Enumeration of all possible encoding:
 /// - the first nucleotide is equal to 00
@@ -10,7 +35,7 @@ use super::*;
 /// - the third nucleotide is equal to 10
 /// - the last nucleotide is equal to 11
 #[derive(Clone, Copy, Debug)]
-pub enum Encoding {
+pub enum Naive {
     ACTG = 0b_00_01_10_11,
     ACGT = 0b_00_01_11_10,
     ATCG = 0b_00_10_01_11,
@@ -37,37 +62,30 @@ pub enum Encoding {
     GTCA = 0b_11_10_01_00,
 }
 
-const fn nuc2internal(nuc: u8) -> u8 {
-    (nuc as u8 >> 1) & 0b11
-}
-
-pub struct Naive<P> {
-    encoding: Encoding,
-    _marker: std::marker::PhantomData<P>,
-}
-
-impl<P> Naive<P>
-where
-    P: std::convert::From<u8>,
-{
-    pub fn new(encoding: Encoding) -> Self {
-        Self {
-            encoding,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
-    /// Convert nucleotide in encoding corresponding 2 bits  
-    pub(crate) fn nuc2bits(&self, nuc: u8) -> P {
+impl Naive {
+    /// Convert nucleotide in encoding corresponding 2 bits
+    pub(crate) fn nuc2bits<P>(&self, nuc: u8) -> P
+    where
+        P: crate::utils::Data,
+    {
         let index = 6 - nuc2internal(nuc) * 2;
-	
-        P::from((self.encoding as u8 >> index) & 0b11)
+
+        P::from((*self as u8 >> index) & 0b11)
+    }
+
+    pub(crate) fn bits2nuc<P>(&self, bits: P) -> u8
+    where
+        P: crate::utils::Data,
+    {
+        // I forget how this work but it's works
+        let reverse = rev_encoding(*self as u8);
+        internal2nuc((reverse >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11)
     }
 }
 
-impl<P, const B: usize> Encoder<P, B> for Naive<P>
+impl<P, const B: usize> super::Encoding<P, B> for Naive
 where
-    P: std::convert::From<u8> + bit_field::BitField + std::marker::Copy,
+    P: crate::utils::Data,
 {
     fn encode(&self, seq: &[u8]) -> [P; B] {
         let mut array: [P; B] = unsafe { [std::mem::zeroed(); B] };
@@ -78,203 +96,390 @@ where
 
         array
     }
+
+    /// Convert an array of two bits data in
+    fn decode(&self, array: [P; B]) -> Vec<u8> {
+        let mut seq = Vec::with_capacity(B * 4);
+
+        for idx in 0..P::BIT_LENGTH * B / 2 {
+            let value = array.get_bits(idx * 2..=idx * 2 + 1);
+            seq.push(self.bits2nuc(value));
+        }
+
+        seq
+    }
+
+    fn rev_comp(&self, _array: [P; B]) -> [P; B] {
+        todo!()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use bit_field::BitArray;
+    use crate::encoding::Encoding as _;
 
     use crate::kmer;
 
     #[test]
-    fn one_base_encoding() {
-        let encoder = Naive::<u8>::new(Encoding::ACTG);
+    fn one_base_all_encoding() {
+        let encoder = Naive::ACTG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::ATCG);
+        let encoder = Naive::ATCG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::ATGC);
+        let encoder = Naive::ATGC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::AGCT);
+        let encoder = Naive::AGCT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::AGTC);
+        let encoder = Naive::AGTC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::CATG);
+        let encoder = Naive::CATG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::CAGT);
+        let encoder = Naive::CAGT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::CTAG);
+        let encoder = Naive::CTAG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::CTGA);
+        let encoder = Naive::CTGA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::CGAT);
+        let encoder = Naive::CGAT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::CGTA);
+        let encoder = Naive::CGTA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::TACG);
+        let encoder = Naive::TACG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::TAGC);
+        let encoder = Naive::TAGC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::TCAG);
+        let encoder = Naive::TCAG;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b11);
 
-        let encoder = Naive::<u8>::new(Encoding::TCGA);
+        let encoder = Naive::TCGA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b10);
 
-        let encoder = Naive::<u8>::new(Encoding::TGAC);
+        let encoder = Naive::TGAC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::TGCA);
+        let encoder = Naive::TGCA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b00);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b01);
 
-        let encoder = Naive::<u8>::new(Encoding::GACT);
+        let encoder = Naive::GACT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
 
-        let encoder = Naive::<u8>::new(Encoding::GATC);
+        let encoder = Naive::GATC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
 
-        let encoder = Naive::<u8>::new(Encoding::GCAT);
+        let encoder = Naive::GCAT;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
 
-        let encoder = Naive::<u8>::new(Encoding::GCTA);
+        let encoder = Naive::GCTA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
 
-        let encoder = Naive::<u8>::new(Encoding::GTAC);
+        let encoder = Naive::GTAC;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
 
-        let encoder = Naive::<u8>::new(Encoding::GTCA);
+        let encoder = Naive::GTCA;
 
-        assert_eq!(encoder.nuc2bits(b'A'), 0b11);
-        assert_eq!(encoder.nuc2bits(b'C'), 0b10);
-        assert_eq!(encoder.nuc2bits(b'T'), 0b01);
-        assert_eq!(encoder.nuc2bits(b'G'), 0b00);
+        assert_eq!(encoder.nuc2bits::<u8>(b'A'), 0b11);
+        assert_eq!(encoder.nuc2bits::<u8>(b'C'), 0b10);
+        assert_eq!(encoder.nuc2bits::<u8>(b'T'), 0b01);
+        assert_eq!(encoder.nuc2bits::<u8>(b'G'), 0b00);
+    }
+
+    #[test]
+    fn one_base_all_decoding() {
+        let encoder = Naive::ACTG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::ACGT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::ATCG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::ATGC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::AGCT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::AGTC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::CATG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::CAGT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::CTAG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::CTGA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::CGAT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::CGTA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::TACG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::TAGC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::TCAG;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'G');
+
+        let encoder = Naive::TCGA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'G');
+
+        let encoder = Naive::TGAC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::TGCA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'G');
+
+        let encoder = Naive::GACT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
+
+        let encoder = Naive::GATC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
+
+        let encoder = Naive::GCAT;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
+
+        let encoder = Naive::GCTA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
+
+        let encoder = Naive::GTAC;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
+
+        let encoder = Naive::GTCA;
+
+        assert_eq!(encoder.bits2nuc::<u8>(0b11), b'A');
+        assert_eq!(encoder.bits2nuc::<u8>(0b10), b'C');
+        assert_eq!(encoder.bits2nuc::<u8>(0b01), b'T');
+        assert_eq!(encoder.bits2nuc::<u8>(0b00), b'G');
     }
 
     #[test]
     fn k15pu8() {
-        let encoder = Naive::<u8>::new(Encoding::ACGT);
-
-        let array = encoder.encode(b"TAAGGATTCTAATCA");
+        let array = Naive::ACGT.encode(b"TAAGGATTCTAATCA");
 
         assert_eq!([131, 242, 13, 7], array);
 
         let table: Vec<u8> = (0..15).map(|i| array.get_bits(i * 2..=i * 2 + 1)).collect();
 
         assert_eq!(table, vec![3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0]);
+
+        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA"); //One A more because encoder didn't know the size of kmer
     }
 
     #[test]
     fn k15pu16() {
-        let encoder = Naive::<u16>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
         let array = encoder.encode(b"TAAGGATTCTAATCA");
 
@@ -287,7 +492,7 @@ mod tests {
 
     #[test]
     fn k15pu32() {
-        let encoder = Naive::<u32>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
         let array = encoder.encode(b"TAAGGATTCTAATCA");
 
@@ -300,7 +505,7 @@ mod tests {
 
     #[test]
     fn k30pu32() {
-        let encoder = Naive::<u32>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
         let array = encoder.encode(b"TAAGGATTCTAATCATAAGGATTCTAATCA");
 
@@ -319,7 +524,7 @@ mod tests {
 
     #[test]
     fn k45pu64() {
-        let encoder = Naive::<u64>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
         let array: [u64; kmer::word_for_k::<u64, 45>()] =
             encoder.encode(b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCA");
@@ -339,7 +544,7 @@ mod tests {
 
     #[test]
     fn k65pu128() {
-        let encoder = Naive::<u128>::new(Encoding::ACGT);
+        let encoder = Naive::ACGT;
 
         let array: [u128; kmer::word_for_k::<u128, 65>()] =
             encoder.encode(b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCAGGGGG");

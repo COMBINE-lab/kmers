@@ -19,6 +19,7 @@ fn internal2nuc(internal: u8) -> u8 {
 const fn rev_encoding(encoding: u8) -> u8 {
     let mut rev = 0;
 
+    // Sorry for black magic bits operation
     rev ^= 0b00 << (6 - ((encoding >> 6) * 2));
     rev ^= 0b01 << (6 - (((encoding >> 4) & 0b11) * 2));
     rev ^= 0b10 << (6 - (((encoding >> 2) & 0b11) * 2));
@@ -80,6 +81,28 @@ impl Naive {
         // I forget how this work but it's works
         let reverse = rev_encoding(*self as u8);
         internal2nuc((reverse >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11)
+    }
+
+    pub(crate) fn complement<P>(&self, bits: P) -> P
+    where
+        P: crate::utils::Data,
+    {
+        let rev_encoding = rev_encoding(*self as u8);
+
+        println!("encoding     {:08b}", *self as u8);
+        println!("rev_encoding {:08b}", rev_encoding);
+
+        println!("original {:08b}", bits.to_u8());
+
+        let internal = (rev_encoding >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11;
+
+        println!("internal {:08b}", internal);
+
+        let comp_internal = (internal ^ 0b10) & 0b11;
+
+        println!("comp_int {:08b}", comp_internal);
+
+        P::from((*self as u8 >> (6 - comp_internal * 2)) & 0b11)
     }
 }
 
@@ -174,15 +197,58 @@ mod tests {
 		$(
 		    let encoder = $ty;
 
-		    assert_eq!((encoder as u8).get_bits(6..8), encoder.nuc2bits::<u8>(b'A') );
-		    assert_eq!((encoder as u8).get_bits(4..6), encoder.nuc2bits::<u8>(b'C') );
-		    assert_eq!((encoder as u8).get_bits(2..4), encoder.nuc2bits::<u8>(b'T') );
-		    assert_eq!((encoder as u8).get_bits(0..2), encoder.nuc2bits::<u8>(b'G') );
+		    assert_eq!((encoder as u8).get_bits(6..8), encoder.nuc2bits::<u8>(b'A'));
+		    assert_eq!((encoder as u8).get_bits(4..6), encoder.nuc2bits::<u8>(b'C'));
+		    assert_eq!((encoder as u8).get_bits(2..4), encoder.nuc2bits::<u8>(b'T'));
+		    assert_eq!((encoder as u8).get_bits(0..2), encoder.nuc2bits::<u8>(b'G'));
 		)*
 	    )
 	}
 
         bits2one_base!(
+            Naive::ACTG,
+            Naive::ACGT,
+            Naive::ATCG,
+            Naive::ATGC,
+            Naive::AGCT,
+            Naive::AGTC,
+            Naive::CATG,
+            Naive::CAGT,
+            Naive::CTAG,
+            Naive::CTGA,
+            Naive::CGAT,
+            Naive::CGTA,
+            Naive::TACG,
+            Naive::TAGC,
+            Naive::TCAG,
+            Naive::TCGA,
+            Naive::TGAC,
+            Naive::TGCA,
+            Naive::GACT,
+            Naive::GATC,
+            Naive::GCAT,
+            Naive::GCTA,
+            Naive::GTAC,
+            Naive::GTCA
+        );
+    }
+
+    #[test]
+    fn comp_one_base_all_encoding() {
+        macro_rules! comp_one_base {
+	    ($($ty:expr), *) => (
+		$(
+		    let encoder = $ty;
+
+		    assert_eq!(encoder.complement(encoder.nuc2bits::<u8>(b'A')), encoder.nuc2bits::<u8>(b'T'));
+		    assert_eq!(encoder.complement(encoder.nuc2bits::<u8>(b'C')), encoder.nuc2bits::<u8>(b'G'));
+		    assert_eq!(encoder.complement(encoder.nuc2bits::<u8>(b'T')), encoder.nuc2bits::<u8>(b'A'));
+		    assert_eq!(encoder.complement(encoder.nuc2bits::<u8>(b'G')), encoder.nuc2bits::<u8>(b'C'));
+		)*
+	    )
+	}
+
+        comp_one_base!(
             Naive::ACTG,
             Naive::ACGT,
             Naive::ATCG,

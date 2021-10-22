@@ -148,13 +148,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use bit_field::BitField;
-
     use super::*;
 
-    use crate::encoding::Encoding as _;
+    use bit_field::BitField as _;
 
     use crate::kmer;
+
+    use crate::encoding::Encoding as _;
 
     #[test]
     fn one_base_all_encoding() {
@@ -206,10 +206,10 @@ mod tests {
 		$(
 		    let encoder = $ty;
 
-		    assert_eq!((encoder as u8).get_bits(6..8), encoder.nuc2bits::<u8>(b'A'));
-		    assert_eq!((encoder as u8).get_bits(4..6), encoder.nuc2bits::<u8>(b'C'));
-		    assert_eq!((encoder as u8).get_bits(2..4), encoder.nuc2bits::<u8>(b'T'));
-		    assert_eq!((encoder as u8).get_bits(0..2), encoder.nuc2bits::<u8>(b'G'));
+		    assert_eq!(encoder.bits2nuc::<u8>((encoder as u8).get_bits(6..8)), b'A');
+		    assert_eq!(encoder.bits2nuc::<u8>((encoder as u8).get_bits(4..6)), b'C');
+		    assert_eq!(encoder.bits2nuc::<u8>((encoder as u8).get_bits(2..4)), b'T');
+		    assert_eq!(encoder.bits2nuc::<u8>((encoder as u8).get_bits(0..2)), b'G');
 		)*
 	    )
 	}

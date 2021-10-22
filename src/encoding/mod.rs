@@ -2,9 +2,11 @@
 
 /* mod declaration */
 pub mod naive;
+pub mod xor10;
 
 /* public use */
 pub use naive::Naive;
+pub use xor10::Xor10;
 
 pub trait Encoding<P, const B: usize> {
     fn encode(&self, seq: &[u8]) -> [P; B];

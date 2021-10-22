@@ -14,7 +14,7 @@ macro_rules! impl_data {
 	    impl Data for $x {
 		/// Convert self in u8 warning only lower bit are kept
 		fn to_u8(&self) -> u8 {
-		    self.to_be_bytes()[0]
+		    self.to_le_bytes()[0]
 		}
 	    }
         )*

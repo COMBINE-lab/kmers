@@ -79,8 +79,8 @@ impl Naive {
         P: crate::utils::Data,
     {
         // I forget how this work but it's works
-        let reverse = rev_encoding(*self as u8);
-        internal2nuc((reverse >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11)
+        let rev_encoding = rev_encoding(*self as u8);
+        internal2nuc((rev_encoding >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11)
     }
 
     pub(crate) fn complement<P>(&self, bits: P) -> P
@@ -89,18 +89,9 @@ impl Naive {
     {
         let rev_encoding = rev_encoding(*self as u8);
 
-        println!("encoding     {:08b}", *self as u8);
-        println!("rev_encoding {:08b}", rev_encoding);
-
-        println!("original {:08b}", bits.to_u8());
-
         let internal = (rev_encoding >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11;
 
-        println!("internal {:08b}", internal);
-
         let comp_internal = (internal ^ 0b10) & 0b11;
-
-        println!("comp_int {:08b}", comp_internal);
 
         P::from((*self as u8 >> (6 - comp_internal * 2)) & 0b11)
     }
@@ -122,18 +113,36 @@ where
 
     /// Convert an array of two bits data in
     fn decode(&self, array: [P; B]) -> Vec<u8> {
-        let mut seq = Vec::with_capacity(B * 4);
+        let mut seq = Vec::with_capacity(B * P::BIT_LENGTH);
 
-        for idx in 0..P::BIT_LENGTH * B / 2 {
+        for idx in 0..array.len() * P::BIT_LENGTH / 2 {
             let value = array.get_bits(idx * 2..=idx * 2 + 1);
+
             seq.push(self.bits2nuc(value));
         }
 
         seq
     }
 
-    fn rev_comp(&self, _array: [P; B]) -> [P; B] {
-        todo!()
+    fn rev_comp(&self, mut array: [P; B]) -> [P; B] {
+        let mut i = 0;
+        let mut j = array.len() * P::BIT_LENGTH - 2;
+
+        while i < j {
+            let comp_i = self.complement(array.get_bits(i..i + 2));
+            let comp_j = self.complement(array.get_bits(j..j + 2));
+
+            array.set_bits(i..i + 2, comp_j);
+            array.set_bits(j..j + 2, comp_i);
+
+            i += 2;
+            j -= 2;
+        }
+
+        // No need to manage odd case,
+        // array is always a sum of power of 2 bits so its always even
+
+        array
     }
 }
 
@@ -286,7 +295,13 @@ mod tests {
 
         assert_eq!(table, vec![3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0]);
 
-        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA"); //One A more because encoder didn't know the size of kmer
+        //One A more because encoder didn't know the size of kmer
+        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
+
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
+            b"TTGATTAGAATCCTTA"
+        );
     }
 
     #[test]
@@ -300,6 +315,14 @@ mod tests {
         let table: Vec<u16> = (0..15).map(|i| array.get_bits(i * 2..=i * 2 + 1)).collect();
 
         assert_eq!(table, vec![3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0]);
+
+        //One more A because encoder didn't know the size of kmer
+        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
+
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
+            b"TTGATTAGAATCCTTA"
+        );
     }
 
     #[test]
@@ -313,6 +336,14 @@ mod tests {
         let table: Vec<u32> = (0..15).map(|i| array.get_bits(i * 2..=i * 2 + 1)).collect();
 
         assert_eq!(table, vec![3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0]);
+
+        //One more A because encoder didn't know the size of kmer
+        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
+
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
+            b"TTGATTAGAATCCTTA"
+        );
     }
 
     #[test]
@@ -331,6 +362,17 @@ mod tests {
                 3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0, 3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3,
                 1, 0
             ]
+        );
+
+        //Two more A because encoder didn't know the size of kmer
+        assert_eq!(
+            Naive::ACGT.decode(array),
+            b"TAAGGATTCTAATCATAAGGATTCTAATCAAA"
+        );
+
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
+            b"TTTGATTAGAATCCTTATGATTAGAATCCTTA"
         );
     }
 
@@ -351,6 +393,17 @@ mod tests {
                 3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0, 3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3,
                 1, 0, 3, 0, 0, 2, 2, 0, 3, 3, 1, 3, 0, 0, 3, 1, 0
             ]
+        );
+
+        //19 more A because encoder didn't know the size of kmer
+        assert_eq!(
+            Naive::ACGT.decode(array),
+            b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCAAAAAAAAAAAAAAAAAAAA"
+        );
+
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
+            b"TTTTTTTTTTTTTTTTTTTTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA"
         );
     }
 
@@ -373,5 +426,10 @@ mod tests {
                 0, 3, 1, 0, 2, 2, 2, 2, 2
             ]
         );
+
+        // Many trailling A
+        assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCAGGGGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
+        assert_eq!(Naive::ACGT.decode(Naive::ACGT.rev_comp(array)), b"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA");
     }
 }

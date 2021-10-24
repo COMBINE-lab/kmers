@@ -1,4 +1,4 @@
-//! Many usefull stuff
+//! Mod contains thing without any other logical place
 
 /// A trait to alias all other required trait
 pub trait Data:
@@ -12,7 +12,7 @@ macro_rules! impl_data {
     ( $( $x:ty ),* ) => {
         $(
 	    impl Data for $x {
-		/// Convert self in u8 warning only lower bit are kept
+		/// Convert self in u8 warning only 8 lower bit are kept
 		fn to_u8(&self) -> u8 {
 		    self.to_le_bytes()[0]
 		}

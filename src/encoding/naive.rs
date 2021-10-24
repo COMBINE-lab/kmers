@@ -1,21 +1,31 @@
 //! Naive implementation of encoding
 //! Not the best implementation but you can use any encoding
+//!
+//! This implementation use encoding A -> 00, C -> 01, T -> 10 and G -> 11 to perform conversion to any other encoding.
+//! We use this encoding because it's easy to convert ASCII value of nucleotide in this encoding, by perform a bit shift on rigth and keep two lower bits.
+//! This work for lower and upper case.
 
 /* crate use */
 use bit_field::BitArray as _;
 
 /* Private function */
 
+/// Convert ASCII nucleotide in internal encoding
 fn nuc2internal(nuc: u8) -> u8 {
     (nuc as u8 >> 1) & 0b11
 }
 
+/// Lookup table usefull to convert internal encoding in ASCII
 const INTERNAL2NUC: [u8; 4] = [b'A', b'C', b'T', b'G'];
 
+/// Just a wrapper around INTERNAL2NUC lookup table
+#[inline]
 fn internal2nuc(internal: u8) -> u8 {
     INTERNAL2NUC[internal as usize]
 }
 
+/// Function to convert an encoding in a reverse encoding use to perform 2 bits to 8 bits operation
+#[inline]
 const fn rev_encoding(encoding: u8) -> u8 {
     let mut rev = 0;
 
@@ -74,6 +84,7 @@ impl Naive {
         P::from((*self as u8 >> index) & 0b11)
     }
 
+    /// Convert nucleotide encode on 2 bits in 8 bits encoding
     pub(crate) fn bits2nuc<P>(&self, bits: P) -> u8
     where
         P: crate::utils::Data,
@@ -83,6 +94,7 @@ impl Naive {
         internal2nuc((rev_encoding >> (6 - (bits.to_u8() & 0b11) * 2)) & 0b11)
     }
 
+    /// Get the complement of a nucleotide encode in 2 bits
     pub(crate) fn complement<P>(&self, bits: P) -> P
     where
         P: crate::utils::Data,
@@ -111,7 +123,6 @@ where
         array
     }
 
-    /// Convert an array of two bits data in
     fn decode(&self, array: [P; B]) -> Vec<u8> {
         let mut seq = Vec::with_capacity(B * P::BIT_LENGTH);
 

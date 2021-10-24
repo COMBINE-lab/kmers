@@ -1,13 +1,17 @@
 //! XOR10 implementation of encoding
-//! A fast encoding stuff but A -> 00, C -> 01, T -> 10, G -> 11
+//! A fast encoder but A -> 00, C -> 01, T -> 10, G -> 11
 
 /* crate use */
 use bit_field::BitArray as _;
+
+/// Lookup table usefull to convert internal encoding in ASCII
+const BITS2NUC: [u8; 4] = [b'A', b'C', b'T', b'G'];
 
 pub struct Xor10;
 
 impl Xor10 {
     /// Convert nucleotide in encoding corresponding 2 bits
+    #[inline]
     pub(crate) fn nuc2bits<P>(&self, nuc: u8) -> P
     where
         P: crate::utils::Data,
@@ -15,19 +19,17 @@ impl Xor10 {
         P::from((nuc >> 1) & 0b11)
     }
 
+    /// Convert nucleotide encode on 2 bits in ASCII
+    #[inline]
     pub(crate) fn bits2nuc<P>(&self, bits: P) -> u8
     where
         P: crate::utils::Data,
     {
-        match bits.to_u8() {
-            0 => b'A',
-            1 => b'C',
-            2 => b'T',
-            3 => b'G',
-            _ => b'G',
-        }
+        BITS2NUC[bits.to_u8() as usize]
     }
 
+    /// Get the complement of a nucleotide encode in 2 bits
+    #[inline]
     pub(crate) fn complement<P>(&self, bits: P) -> P
     where
         P: crate::utils::Data,
@@ -63,7 +65,8 @@ where
     }
 
     fn rev_comp(&self, mut array: [P; B]) -> [P; B] {
-        let mut i = 0;
+	// This could probably be improve natir/cocktail have a nicer implementation for u64
+	let mut i = 0;
         let mut j = array.len() * P::BIT_LENGTH - 2;
 
         while i < j {

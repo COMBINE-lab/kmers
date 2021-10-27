@@ -195,7 +195,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.42.0
+          toolchain: 1.51.0
           override: true
 
       - name: check if README matches MSRV defined here

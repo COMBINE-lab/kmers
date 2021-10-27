@@ -19,5 +19,5 @@ pub trait Encoding<P, const B: usize> {
     fn decode(&self, array: [P; B]) -> Vec<u8>;
 
     /// Perform a reverse complement on a DNA sequence encode on 2 bits per nucleotide
-    fn rev_comp(&self, array: [P; B]) -> [P; B];
+    fn rev_comp<const K: usize>(&self, array: [P; B]) -> [P; B];
 }

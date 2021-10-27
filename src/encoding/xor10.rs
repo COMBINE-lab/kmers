@@ -64,12 +64,12 @@ where
         seq
     }
 
-    fn rev_comp(&self, mut array: [P; B]) -> [P; B] {
-	// This could probably be improve natir/cocktail have a nicer implementation for u64
-	let mut i = 0;
-        let mut j = array.len() * P::BIT_LENGTH - 2;
+    fn rev_comp<const K: usize>(&self, mut array: [P; B]) -> [P; B] {
+        // This could probably be improve natir/cocktail have a nicer implementation for u64
+        let mut i = 0;
+        let mut j = K * 2 - 2;
 
-        while i < j {
+        while i <= j {
             let comp_i = self.complement(array.get_bits(i..i + 2));
             let comp_j = self.complement(array.get_bits(j..j + 2));
 
@@ -79,9 +79,6 @@ where
             i += 2;
             j -= 2;
         }
-
-        // No need to manage odd case,
-        // array is always a sum of power of 2 bits so its always even
 
         array
     }
@@ -151,7 +148,10 @@ mod tests {
         //One A more because encoder didn't know the size of kmer
         assert_eq!(Xor10.decode(array), b"TAAGGATTCTAATCAA");
 
-        assert_eq!(Xor10.decode(Xor10.rev_comp(array)), b"TTGATTAGAATCCTTA");
+        assert_eq!(
+            Xor10.decode(Xor10.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
+        );
     }
 
     #[test]
@@ -169,7 +169,10 @@ mod tests {
         //One more A because encoder didn't know the size of kmer
         assert_eq!(Xor10.decode(array), b"TAAGGATTCTAATCAA");
 
-        assert_eq!(Xor10.decode(Xor10.rev_comp(array)), b"TTGATTAGAATCCTTA");
+        assert_eq!(
+            Xor10.decode(Xor10.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
+        );
     }
 
     #[test]
@@ -187,7 +190,10 @@ mod tests {
         //One more A because encoder didn't know the size of kmer
         assert_eq!(Xor10.decode(array), b"TAAGGATTCTAATCAA");
 
-        assert_eq!(Xor10.decode(Xor10.rev_comp(array)), b"TTGATTAGAATCCTTA");
+        assert_eq!(
+            Xor10.decode(Xor10.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
+        );
     }
 
     #[test]
@@ -212,8 +218,8 @@ mod tests {
         assert_eq!(Xor10.decode(array), b"TAAGGATTCTAATCATAAGGATTCTAATCAAA");
 
         assert_eq!(
-            Xor10.decode(Xor10.rev_comp(array)),
-            b"TTTGATTAGAATCCTTATGATTAGAATCCTTA"
+            Xor10.decode(Xor10.rev_comp::<30>(array)),
+            b"TGATTAGAATCCTTATGATTAGAATCCTTAAA"
         );
     }
 
@@ -243,8 +249,8 @@ mod tests {
         );
 
         assert_eq!(
-            Xor10.decode(Xor10.rev_comp(array)),
-            b"TTTTTTTTTTTTTTTTTTTTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA"
+            Xor10.decode(Xor10.rev_comp::<45>(array)),
+            b"TGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTAAAAAAAAAAAAAAAAAAAA"
         );
     }
 
@@ -271,6 +277,6 @@ mod tests {
         // Many trailling A
         assert_eq!(Xor10.decode(array), b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCAGGGGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
-        assert_eq!(Xor10.decode(Xor10.rev_comp(array)), b"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA");
+        assert_eq!(Xor10.decode(Xor10.rev_comp::<65>(array)), b"CCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
 }

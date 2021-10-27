@@ -135,11 +135,11 @@ where
         seq
     }
 
-    fn rev_comp(&self, mut array: [P; B]) -> [P; B] {
+    fn rev_comp<const K: usize>(&self, mut array: [P; B]) -> [P; B] {
         let mut i = 0;
-        let mut j = array.len() * P::BIT_LENGTH - 2;
+        let mut j = K * 2 - 2;
 
-        while i < j {
+        while i <= j {
             let comp_i = self.complement(array.get_bits(i..i + 2));
             let comp_j = self.complement(array.get_bits(j..j + 2));
 
@@ -149,9 +149,6 @@ where
             i += 2;
             j -= 2;
         }
-
-        // No need to manage odd case,
-        // array is always a sum of power of 2 bits so its always even
 
         array
     }
@@ -310,8 +307,8 @@ mod tests {
         assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
 
         assert_eq!(
-            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
-            b"TTGATTAGAATCCTTA"
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
         );
     }
 
@@ -331,8 +328,8 @@ mod tests {
         assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
 
         assert_eq!(
-            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
-            b"TTGATTAGAATCCTTA"
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
         );
     }
 
@@ -352,8 +349,8 @@ mod tests {
         assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCAA");
 
         assert_eq!(
-            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
-            b"TTGATTAGAATCCTTA"
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<15>(array)),
+            b"TGATTAGAATCCTTAA"
         );
     }
 
@@ -382,8 +379,8 @@ mod tests {
         );
 
         assert_eq!(
-            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
-            b"TTTGATTAGAATCCTTATGATTAGAATCCTTA"
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<30>(array)),
+            b"TGATTAGAATCCTTATGATTAGAATCCTTAAA"
         );
     }
 
@@ -413,8 +410,8 @@ mod tests {
         );
 
         assert_eq!(
-            Naive::ACGT.decode(Naive::ACGT.rev_comp(array)),
-            b"TTTTTTTTTTTTTTTTTTTTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA"
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<45>(array)),
+            b"TGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTAAAAAAAAAAAAAAAAAAAA"
         );
     }
 
@@ -441,6 +438,9 @@ mod tests {
         // Many trailling A
         assert_eq!(Naive::ACGT.decode(array), b"TAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCATAAGGATTCTAATCAGGGGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
-        assert_eq!(Naive::ACGT.decode(Naive::ACGT.rev_comp(array)), b"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTA");
+        assert_eq!(
+            Naive::ACGT.decode(Naive::ACGT.rev_comp::<65>(array)),
+            b"CCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        );
     }
 }

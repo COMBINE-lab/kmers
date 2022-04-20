@@ -2,6 +2,7 @@
 
 /* crate use */
 use bit_field::BitArray;
+use std::u32;
 
 /* project use */
 use crate::encoding;
@@ -45,6 +46,10 @@ where
     pub fn get(&self, index: usize) -> P {
         self.array.get_bits(index * 2..=index * 2 + 1)
     }
+
+    pub fn get_prefix(&self, len: usize) -> P {
+        self.array.get_bits(0..=(len * 2))
+    }
 }
 
 impl<P, const K: usize, const B: usize> std::default::Default for Kmer<P, K, B>
@@ -61,6 +66,31 @@ where
 /// compute the number of words required to store a kmer of length k
 pub const fn word_for_k<P, const K: usize>() -> usize {
     (std::mem::size_of::<P>() * 8 / 2 + K - 1) / (std::mem::size_of::<P>() * 8 / 2)
+}
+
+pub fn bitmer_to_bytes(mer: u64, len_in: usize) -> Vec<u8> {
+    let mut new_kmer = mer;
+    let len = len_in as u32;
+    let mut new_kmer_str = Vec::new();
+    // we're reading the bases off from the "high" end of the integer so we need to do some
+    // math to figure out where they start (this helps us just pop the bases on the end
+    // of the working buffer as we read them off "left to right")
+    let offset = (len - 1) * 2;
+    let bitmask = u64::pow(2, u32::from(2 * len - 1))
+        + u64::pow(2, u32::from(2 * len - 2));
+
+    for _ in 0..len {
+        let new_char = (new_kmer & bitmask) >> offset;
+        new_kmer <<= 2;
+        new_kmer_str.push(match new_char {
+            0 => b'A',
+            1 => b'C',
+            2 => b'G',
+            3 => b'T',
+            _ => panic!("Mathematical impossibility"),
+        });
+    }
+    new_kmer_str
 }
 
 #[cfg(test)]
@@ -154,5 +184,17 @@ mod tests {
         assert_eq!(kmer.get(1), 0b11);
         assert_eq!(kmer.get(2), 0b00);
         assert_eq!(kmer.get(3), 0b10);
+    }
+
+    #[test]
+    fn kmer_prefix() {
+        let encoder = encoding::Naive::ACGT;
+        let kmer = Kmer::<u64, 31, { word_for_k::<u64, 31>() }>::new(b"GTAC", &encoder);
+
+        let pref: u64 = kmer.get_prefix(4);
+        assert_eq!(pref, 0b01001110);
+
+        let s = bitmer_to_bytes(pref, 4);
+        assert_eq!(b"GTAC".to_vec(), s);
     }
 }

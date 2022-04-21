@@ -76,8 +76,7 @@ pub fn bitmer_to_bytes(mer: u64, len_in: usize) -> Vec<u8> {
     // math to figure out where they start (this helps us just pop the bases on the end
     // of the working buffer as we read them off "left to right")
     let offset = (len - 1) * 2;
-    let bitmask = u64::pow(2, u32::from(2 * len - 1))
-        + u64::pow(2, u32::from(2 * len - 2));
+    let bitmask = u64::pow(2, u32::from(2 * len - 1)) + u64::pow(2, u32::from(2 * len - 2));
 
     for _ in 0..len {
         let new_char = (new_kmer & bitmask) >> offset;

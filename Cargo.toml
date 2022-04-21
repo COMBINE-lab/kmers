@@ -9,10 +9,10 @@ edition = "2021"
 [dependencies]
 bit_field = "0.10"
 serde = { version = "1.0", features = ["derive"] }
-random-string = "1.0"
 
 [dev-dependencies]
 criterion = "0.3"
+random-string = "1.0"
 
 [[bench]]
 name = "simple_benchmark"

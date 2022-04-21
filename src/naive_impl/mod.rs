@@ -7,7 +7,6 @@ mod seq_vector;
 pub use canonical_kmer::{CanonicalKmer, MatchType};
 pub use canonical_kmer_iterator::CanonicalKmerIterator;
 pub use kmer::Kmer;
-pub use seq_vector::SeqVector;
 
 pub(crate) use prelude::Base;
 pub use prelude::{A, C, G, T};

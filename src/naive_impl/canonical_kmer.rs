@@ -213,7 +213,7 @@ mod tests {
     use super::*;
     const K: u8 = 31;
 
-    #[quickcheck]
+    //#[quickcheck]
     fn swap_identity(word: u64) -> bool {
         let mut a = CanonicalKmer::from_u64(word, K);
         let b = a.clone();
@@ -222,7 +222,7 @@ mod tests {
         a == b
     }
 
-    #[quickcheck]
+    //#[quickcheck]
     fn equivalency(word: u64) -> bool {
         let canon_km = CanonicalKmer::from_u64(word, K);
         let mut canon_km2 = CanonicalKmer::from(canon_km.get_rc_mer());

@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 bit_field = "0.10"
 serde = { version = "1.0", features = ["derive"] }
+num = "0.4.0"
 
 [dev-dependencies]
 criterion = "0.3"

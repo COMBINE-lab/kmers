@@ -3,6 +3,8 @@
 
 /* crate use */
 use bit_field::BitArray as _;
+use std::mem::size_of;
+use num;
 
 /// Lookup table usefull to convert internal encoding in ASCII
 const BITS2NUC: [u8; 4] = [b'A', b'C', b'T', b'G'];
@@ -38,9 +40,14 @@ impl Xor10 {
     }
 }
 
+/*
+impl<P> From<usize> {
+
+}*/
+
 impl<P, const B: usize> super::Encoding<P, B> for Xor10
 where
-    P: crate::utils::Data,
+    P: crate::utils::Data + num::PrimInt + std::convert::From<u64>,
 {
     fn encode(&self, seq: &[u8]) -> [P; B] {
         let mut array: [P; B] = unsafe { [std::mem::zeroed(); B] };
@@ -65,6 +72,18 @@ where
     }
 
     fn rev_comp<const K: usize>(&self, mut array: [P; B]) -> [P; B] {
+        if B == 1 {
+            let mut kmer = array[0].to_u64().unwrap();
+            // Thank to needtail people ! :)
+            kmer = (kmer >> 2 & 0x3333_3333_3333_3333) | (kmer & 0x3333_3333_3333_3333) << 2;
+            kmer = (kmer >> 4 & 0x0F0F_0F0F_0F0F_0F0F) | (kmer & 0x0F0F_0F0F_0F0F_0F0F) << 4;
+            kmer = (kmer >> 8 & 0x00FF_00FF_00FF_00FF) | (kmer & 0x00FF_00FF_00FF_00FF) << 8;
+            kmer = (kmer >> 16 & 0x0000_FFFF_0000_FFFF) | (kmer & 0x0000_FFFF_0000_FFFF) << 16;
+            kmer = (kmer >> 32 & 0x0000_0000_FFFF_FFFF) | (kmer & 0x0000_0000_FFFF_FFFF) << 32;
+
+            array[0] =  ((8 * size_of::<P>()) as u64 - kmer * 2u64).into();
+            array
+        } else {
         // This could probably be improve natir/cocktail have a nicer implementation for u64
         let mut i = 0;
         let mut j = K * 2 - 2;
@@ -81,9 +100,11 @@ where
         }
 
         array
+        }
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,3 +301,4 @@ mod tests {
         assert_eq!(Xor10.decode(Xor10.rev_comp::<65>(array)), b"CCCCCTGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTATGATTAGAATCCTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
 }
+*/

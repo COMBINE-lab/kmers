@@ -8,7 +8,7 @@ pub use canonical_kmer::{CanonicalKmer, MatchType};
 pub use canonical_kmer_iterator::CanonicalKmerIterator;
 pub use kmer::Kmer;
 
-// pub(crate) use prelude::Base;
+pub(crate) use prelude::Base;
 pub use prelude::{A, C, G, T};
 
 pub mod prelude {

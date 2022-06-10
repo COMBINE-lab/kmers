@@ -12,14 +12,14 @@ pub use prelude::Base;
 pub use prelude::{A, C, G, T};
 
 pub mod prelude {
-    pub(crate) type Base = u64;
+    pub type Base = u64;
     pub const A: Base = 0;
     pub const C: Base = 1;
     pub const G: Base = 2;
     pub const T: Base = 3;
 
     #[inline]
-    pub(crate) fn encode_binary(c: char) -> Base {
+    pub fn encode_binary(c: char) -> Base {
         // might have to play some tricks for lookup in a const
         // array at some point
         match c {
@@ -32,7 +32,7 @@ pub mod prelude {
     }
 
     #[inline]
-    pub(crate) fn encode_binary_u8(c: u8) -> Base {
+    pub fn encode_binary_u8(c: u8) -> Base {
         // might have to play some tricks for lookup in a const
         // array at some point
         match c {
@@ -46,7 +46,7 @@ pub mod prelude {
 
     #[allow(dead_code)]
     #[inline]
-    pub(crate) fn encode_complement_binary_u8(c: u8) -> Base {
+    pub fn encode_complement_binary_u8(c: u8) -> Base {
         // might have to play some tricks for lookup in a const
         // array at some point
         match c {
@@ -60,7 +60,7 @@ pub mod prelude {
 
     #[allow(dead_code)]
     #[inline]
-    pub(crate) fn encode_complement_binary(c: char) -> Base {
+    pub fn encode_complement_binary(c: char) -> Base {
         // might have to play some tricks for lookup in a const
         // array at some point
         match c {
@@ -73,13 +73,13 @@ pub mod prelude {
     }
 
     #[inline]
-    pub(crate) fn complement_base(b: Base) -> Base {
+    pub fn complement_base(b: Base) -> Base {
         // this is cool
         3 - b
     }
 
     #[allow(dead_code)]
-    pub(crate) fn is_valid_nuc(b: Base) -> bool {
+    pub fn is_valid_nuc(b: Base) -> bool {
         b < 4
     }
 }

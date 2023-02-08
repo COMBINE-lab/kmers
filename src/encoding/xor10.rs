@@ -3,8 +3,8 @@
 
 /* crate use */
 use bit_field::BitArray as _;
-use std::mem::size_of;
 use num;
+use std::mem::size_of;
 
 /// Lookup table usefull to convert internal encoding in ASCII
 const BITS2NUC: [u8; 4] = [b'A', b'C', b'T', b'G'];
@@ -81,25 +81,25 @@ where
             kmer = (kmer >> 16 & 0x0000_FFFF_0000_FFFF) | (kmer & 0x0000_FFFF_0000_FFFF) << 16;
             kmer = (kmer >> 32 & 0x0000_0000_FFFF_FFFF) | (kmer & 0x0000_0000_FFFF_FFFF) << 32;
 
-            array[0] =  ((8 * size_of::<P>()) as u64 - kmer * 2u64).into();
+            array[0] = ((8 * size_of::<P>()) as u64 - kmer * 2u64).into();
             array
         } else {
-        // This could probably be improve natir/cocktail have a nicer implementation for u64
-        let mut i = 0;
-        let mut j = K * 2 - 2;
+            // This could probably be improve natir/cocktail have a nicer implementation for u64
+            let mut i = 0;
+            let mut j = K * 2 - 2;
 
-        while i <= j {
-            let comp_i = self.complement(array.get_bits(i..i + 2));
-            let comp_j = self.complement(array.get_bits(j..j + 2));
+            while i <= j {
+                let comp_i = self.complement(array.get_bits(i..i + 2));
+                let comp_j = self.complement(array.get_bits(j..j + 2));
 
-            array.set_bits(i..i + 2, comp_j);
-            array.set_bits(j..j + 2, comp_i);
+                array.set_bits(i..i + 2, comp_j);
+                array.set_bits(j..j + 2, comp_i);
 
-            i += 2;
-            j -= 2;
-        }
+                i += 2;
+                j -= 2;
+            }
 
-        array
+            array
         }
     }
 }

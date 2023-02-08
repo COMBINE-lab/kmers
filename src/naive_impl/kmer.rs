@@ -212,13 +212,13 @@ impl std::fmt::Display for Kmer {
 mod test {
     use super::*;
 
-    //#[quickcheck]
+    #[quickcheck]
     fn rc_identity(word: u64) -> bool {
         let km = Kmer::from_u64(word, 31);
         km == km.to_reverse_complement().to_reverse_complement()
     }
 
-    //#[quickcheck]
+    #[quickcheck]
     fn to_canonical_is_canonical(word: u64) -> bool {
         let km = Kmer::from_u64(word, 31);
         km.to_canonical().is_canonical()

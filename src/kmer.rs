@@ -34,7 +34,7 @@ where
 
     /// returns the value of k for this k-mer
     pub fn k(&self) -> usize {
-        K as usize
+        K
     }
 
     /// returns the number of bytes used for the storage of this k-mer
@@ -72,15 +72,13 @@ pub fn bitmer_to_bytes(mer: u64, len_in: usize) -> Vec<u8> {
     let mut new_kmer = mer;
     let len = len_in as u32;
     let mut new_kmer_str = Vec::new();
-    // we're reading the bases off from the "high" end of the integer so we need to do some
-    // math to figure out where they start (this helps us just pop the bases on the end
-    // of the working buffer as we read them off "left to right")
-    let offset = (len - 1) * 2;
-    let bitmask = u64::pow(2, 2 * len - 1) + u64::pow(2, 2 * len - 2);
 
+    // First char is in the lowest order two bits. So just mask then shift 2.
+    let bitmask = 0b11;
     for _ in 0..len {
-        let new_char = (new_kmer & bitmask) >> offset;
-        new_kmer <<= 2;
+        // let new_char = (new_kmer & bitmask) >> offset;
+        let new_char = new_kmer & bitmask;
+        new_kmer >>= 2;
         new_kmer_str.push(match new_char {
             0 => b'A',
             1 => b'C',
@@ -193,6 +191,13 @@ mod tests {
         let pref: u64 = kmer.get_prefix(4);
         assert_eq!(pref, 0b01001110);
 
+        let s = bitmer_to_bytes(pref, 4);
+        assert_eq!(b"GTAC".to_vec(), s);
+    }
+
+    #[test]
+    fn kmer_to_bytes() {
+        let pref = 0b01001110;
         let s = bitmer_to_bytes(pref, 4);
         assert_eq!(b"GTAC".to_vec(), s);
     }

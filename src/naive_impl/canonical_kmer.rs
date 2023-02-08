@@ -204,7 +204,7 @@ impl From<CanonicalKmer> for String {
 impl std::fmt::Display for CanonicalKmer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg: String = self.clone().into();
-        write!(f, "{}", msg)
+        write!(f, "{msg}")
     }
 }
 

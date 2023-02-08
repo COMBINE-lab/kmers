@@ -204,7 +204,7 @@ impl From<Kmer> for u64 {
 impl std::fmt::Display for Kmer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg: String = self.clone().into();
-        write!(f, "{}", msg)
+        write!(f, "{msg}")
     }
 }
 
@@ -262,28 +262,28 @@ mod test {
         let k2 = Kmer::from("ttc");
 
         let shift_off = k1.append_base_u8(b'c');
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, A);
 
         let mut k1 = Kmer::from("ttcga");
         let k2 = Kmer::from("tcgag");
 
         let shift_off = k1.append_base_u8(b'g');
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, T);
 
         let mut k1 = Kmer::from("att");
         let k2 = Kmer::from("ttc");
 
         let shift_off = k1.append_base(encode_binary_u8(b'c'));
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, A);
 
         let mut k1 = Kmer::from("ttcga");
         let k2 = Kmer::from("tcgag");
 
         let shift_off = k1.append_base(encode_binary_u8(b'g'));
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, T);
     }
 
@@ -293,28 +293,28 @@ mod test {
         let k2 = Kmer::from("cat");
 
         let shift_off = k1.prepend_base_u8(b'c');
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, T);
 
         let mut k1 = Kmer::from("ttcga");
         let k2 = Kmer::from("gttcg");
 
         let shift_off = k1.prepend_base_u8(b'g');
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, A);
 
         let mut k1 = Kmer::from("att");
         let k2 = Kmer::from("cat");
 
         let shift_off = k1.prepend_base(encode_binary_u8(b'c'));
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, T);
 
         let mut k1 = Kmer::from("ttcga");
         let k2 = Kmer::from("gttcg");
 
         let shift_off = k1.prepend_base(encode_binary_u8(b'g'));
-        assert_eq!(k1, k2, "{} {}", k1, k2);
+        assert_eq!(k1, k2, "{k1} {k2}");
         assert_eq!(shift_off, A);
     }
 
@@ -323,39 +323,39 @@ mod test {
         let rc = Kmer { k: 1, data: 0 };
         let rc = rc.to_reverse_complement();
         let checked = Kmer::from("t");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("a").to_reverse_complement();
         let checked = Kmer::from("t");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("aaa").to_reverse_complement();
         let checked = Kmer::from("ttt");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("ttt").to_reverse_complement();
         let checked = Kmer::from("aaa");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("ta").to_reverse_complement();
         let checked = Kmer::from("ta");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("ccg").to_reverse_complement();
         let checked = Kmer::from("cgg");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("aat").to_reverse_complement();
         let checked = Kmer::from("att");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("aat").to_reverse_complement();
         let checked = Kmer::from("att");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
 
         let rc = Kmer::from("gatacataggatgg").to_reverse_complement();
         let checked = Kmer::from("ccatcctatgtatc");
-        assert_eq!(rc, checked, "{} {}", rc, checked);
+        assert_eq!(rc, checked, "{rc} {checked}");
     }
 
     #[test]

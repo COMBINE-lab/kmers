@@ -27,7 +27,7 @@ pub mod prelude {
             'C' | 'c' => C,
             'G' | 'g' => G,
             'T' | 't' => T,
-            _ => panic!("cannot decode {} into 2 bit encoding", c),
+            _ => panic!("cannot decode {c} into 2 bit encoding"),
         }
     }
 
@@ -68,7 +68,7 @@ pub mod prelude {
             'C' | 'c' => G,
             'G' | 'g' => C,
             'T' | 't' => A,
-            _ => panic!("cannot decode {} into 2 bit encoding", c),
+            _ => panic!("cannot decode {c} into 2 bit encoding"),
         }
     }
 

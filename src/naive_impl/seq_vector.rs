@@ -256,6 +256,7 @@ impl<'a> SeqVecKmerIterator<'a> {
 
 impl SeqVecKmerIterator<'_> {
     pub fn len(&self) -> usize {
+        // warn!{"len() to be changed to ExactSizeIterator::len(...)"}
         self.len
     }
 

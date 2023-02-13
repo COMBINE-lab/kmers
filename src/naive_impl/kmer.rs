@@ -1,10 +1,18 @@
+use std::hash::BuildHasher;
+
 use super::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialEq, Default, Debug, Clone, Ord, PartialOrd)]
+#[derive(Eq, Default, Debug, Clone, Ord, PartialOrd)]
 pub struct Kmer {
     pub k: u8,
     pub(crate) data: u64,
+}
+
+impl PartialEq for Kmer {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data && self.k == other.k
+    }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
@@ -22,6 +30,7 @@ const BASE_TABLE: [char; 4] = ['a', 'c', 'g', 't'];
 const fn bitmask(pos: u64) -> u64 {
     (1 << pos) - 1
 }
+
 impl Kmer {
     pub fn len(&self) -> usize {
         self.k as usize
@@ -138,6 +147,52 @@ impl Kmer {
     }
 }
 
+impl Kmer {
+    pub fn sub_kmer(&self, pos: usize, width: usize) -> Self {
+        let km = Kmer::sub_kmer_word(self.data, self.k as usize, pos, width);
+        Kmer::from_u64(km, width as u8)
+    }
+
+    pub fn sub_kmer_word(word: u64, k: usize, pos: usize, width: usize) -> u64 {
+        assert!(pos < k);
+        assert!(pos + width <= k);
+
+        let word = word >> (pos * 2); // shift out low order bits
+        word & MASK_TABLE[width] // mask out high order bits
+    }
+
+    pub fn minimizer<T: BuildHasher>(&self, width: usize, state: &T) -> (Self, usize) {
+        let (mm, o) = Self::minimizer_word(self.data, self.k as usize, width, state);
+        let mm = Kmer::from_u64(mm, width as u8);
+        (mm, o)
+    }
+
+    pub fn minimizer_word<T: BuildHasher>(
+        word: u64,
+        k: usize,
+        width: usize,
+        state: &T,
+    ) -> (u64, usize) {
+        let mut min_mmer = Self::sub_kmer_word(word, k, 0, width);
+        let mut min_hash = u64::MAX;
+        let mut offset = 0;
+
+        for pos in 0..(k - width + 1) {
+            let mmer = Self::sub_kmer_word(word, k, pos, width);
+            let hash = super::hash::hash_one(state, mmer);
+
+            if hash < min_hash {
+                min_mmer = mmer;
+                min_hash = hash;
+                offset = pos;
+            }
+        }
+
+        (min_mmer, offset)
+    }
+}
+
+// Converting to and from Kmers
 impl From<Kmer> for String {
     fn from(kmer: Kmer) -> Self {
         let mut s = String::with_capacity(kmer.k as usize);
@@ -167,6 +222,12 @@ impl From<String> for Kmer {
         }
         let data = w;
         Kmer { data, k }
+    }
+}
+
+impl<const N: usize> From<&[u8; N]> for Kmer {
+    fn from(bytes: &[u8; N]) -> Self {
+        Self::from(bytes.as_slice())
     }
 }
 
@@ -210,6 +271,10 @@ impl std::fmt::Display for Kmer {
 
 #[cfg(test)]
 mod test {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    use super::super::hash::hash_one;
     use super::*;
 
     #[quickcheck]
@@ -460,11 +525,62 @@ mod test {
         assert!(!is_valid_nuc(5));
         assert!(!is_valid_nuc(3112));
     }
+
+    #[test]
+    fn test_sub_kmer() {
+        let s = "ACTTGAT";
+        let km = Kmer::from(s);
+
+        for i in 0..s.len() {
+            for j in i..s.len() {
+                let w = j - i;
+                let ss = &s[i..j];
+                let kw = km.sub_kmer(i, w);
+                assert_eq!(Kmer::from(ss), kw);
+            }
+        }
+    }
+
+    #[test]
+    fn test_hash() {
+        let s = "ACTTGAT";
+        let km = Kmer::from(s);
+
+        let mut h1 = DefaultHasher::new();
+        km.hash(&mut h1);
+        let h1 = h1.finish();
+
+        let mut h2 = DefaultHasher::new();
+        km.data.hash(&mut h2);
+        let h2 = h2.finish();
+
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn test_minimizer() {
+        let s = "ACTTGAT";
+        let km = Kmer::from(s);
+        let seed = std::collections::hash_map::RandomState::new();
+
+        for w in 1..s.len() {
+            let (mm, o) = km.minimizer(w, &seed);
+            let h_min = hash_one(&seed, &mm);
+
+            for i in 0..(s.len() - w + 1) {
+                let wmer = km.sub_kmer(i, w);
+                let h_not = hash_one(&seed, wmer);
+                assert!(h_min <= h_not);
+            }
+
+            let wmer = Kmer::from(&s[o..(o + w)]);
+            assert_eq!(wmer, mm);
+        }
+    }
 }
 
 // table that contains bit patterns to mask out the top bits of a word.
-// The table is such that maskTable[k] will mask out the top (64 - 2*k) bits of
-// the word.
+// Mask_Table[k] is a word such that lowest k*2 order bits are 1s, and 0 otherwise.
 const MASK_TABLE: [u64; 33] = [
     bitmask(0),
     bitmask(2),

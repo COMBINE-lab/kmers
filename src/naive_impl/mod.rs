@@ -1,7 +1,9 @@
 mod canonical_kmer;
 pub mod canonical_kmer_iterator;
 mod kmer;
-mod seq_vector;
+
+pub mod hash;
+pub mod seq_vector;
 
 // re-exports
 pub use canonical_kmer::{CanonicalKmer, MatchType};

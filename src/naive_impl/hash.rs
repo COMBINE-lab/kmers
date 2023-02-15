@@ -19,6 +19,7 @@ where
     hasher.finish()
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct LexHasherState(usize);
 
 impl LexHasherState {

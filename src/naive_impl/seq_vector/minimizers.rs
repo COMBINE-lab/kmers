@@ -4,7 +4,7 @@ use std::hash::BuildHasher;
 use super::super::hash::hash_one;
 use super::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct DQMer {
     pub lmer: u64,
     pub pos: usize,
@@ -108,7 +108,7 @@ impl<'a, T: BuildHasher> SeqVecMinimizerIter<'a, T> {
             curr_km_i: 0,
         };
 
-        for i in 0..(k - 1) {
+        for i in 0..(k - w) {
             let lmer = sv.get_kmer_u64(i, w);
             let hash = hash_one(&iter.hash_seed, lmer);
 
@@ -263,6 +263,28 @@ mod test {
                 MappedMinimizer::new(aac, 0),
                 MappedMinimizer::new(acc, 1),
                 MappedMinimizer::new(aaa, 4),
+            ]
+        )
+    }
+
+    #[test]
+    fn mmers2() {
+        let sv = SeqVector::from(b"CACACACCAC");
+        // let bh = RandomState::new();
+        let bh = LexHasherState::new(3);
+        let iter = SeqVecMinimizerIter::new(sv.as_slice(), 7, 3, bh);
+
+        let mmers: Vec<MappedMinimizer> = iter.collect();
+
+        // let aac = 0b010000;
+        let aca = 0b000100;
+        assert_eq!(
+            mmers,
+            vec![
+                MappedMinimizer::new(aca, 1),
+                MappedMinimizer::new(aca, 1),
+                MappedMinimizer::new(aca, 3),
+                MappedMinimizer::new(aca, 3),
             ]
         )
     }

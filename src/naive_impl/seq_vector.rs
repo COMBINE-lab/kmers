@@ -21,7 +21,7 @@ pub struct SeqVector {
     data: RawVector,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SeqVectorSlice<'a> {
     len: usize,
     start_pos: usize,
@@ -180,6 +180,27 @@ impl From<&SeqVector> for String {
         str
     }
 }
+
+impl std::fmt::Display for SeqVectorSlice<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // write!(f, "SeqVector[ {} ]", String::from(self))
+        write!(f, "{}", String::from(self))
+    }
+}
+
+impl From<&SeqVectorSlice<'_>> for String {
+    fn from(data: &SeqVectorSlice<'_>) -> Self {
+        let mut str = String::new();
+        let bases = vec!['A', 'C', 'G', 'T'];
+        for i in 0..data.len() {
+            let base = data.get_base(i);
+            let base = bases[base as usize];
+            str.push(base);
+        }
+        str
+    }
+}
+
 impl From<SeqVector> for String {
     fn from(data: SeqVector) -> Self {
         Self::from(&data)

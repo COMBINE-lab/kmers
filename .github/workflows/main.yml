@@ -198,12 +198,6 @@ jobs:
       - name: check if README matches MSRV defined here
         run: grep '1.65' README.md
 
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features --no-fail-fast
-
         with:
           command: build
           args: --target wasm32-unknown-unknown

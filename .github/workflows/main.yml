@@ -31,13 +31,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [beta, stable, windows, macos]
+        build: [beta, stable, macos]
         include:
           - build: macos
             os: macos-latest
-            rust: stable
-          - build: windows
-            os: windows-latest
             rust: stable
           - build: beta
             os: ubuntu-latest

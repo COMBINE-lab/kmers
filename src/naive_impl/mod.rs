@@ -1,7 +1,9 @@
 mod canonical_kmer;
 pub mod canonical_kmer_iterator;
 mod kmer;
-mod seq_vector;
+
+pub mod hash;
+pub mod seq_vector;
 
 // re-exports
 pub use canonical_kmer::{CanonicalKmer, MatchType};
@@ -27,7 +29,7 @@ pub mod prelude {
             'C' | 'c' => C,
             'G' | 'g' => G,
             'T' | 't' => T,
-            _ => panic!("cannot decode {} into 2 bit encoding", c),
+            _ => panic!("cannot decode {c} into 2 bit encoding"),
         }
     }
 
@@ -68,7 +70,7 @@ pub mod prelude {
             'C' | 'c' => G,
             'G' | 'g' => C,
             'T' | 't' => A,
-            _ => panic!("cannot decode {} into 2 bit encoding", c),
+            _ => panic!("cannot decode {c} into 2 bit encoding"),
         }
     }
 

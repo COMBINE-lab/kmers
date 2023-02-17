@@ -12,7 +12,7 @@ use bit_field::BitArray as _;
 
 /// Convert ASCII nucleotide in internal encoding
 fn nuc2internal(nuc: u8) -> u8 {
-    (nuc as u8 >> 1) & 0b11
+    (nuc >> 1) & 0b11
 }
 
 /// Lookup table usefull to convert internal encoding in ASCII

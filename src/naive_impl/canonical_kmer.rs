@@ -44,9 +44,9 @@ impl CanonicalKmer {
         let rc = fw.to_reverse_complement();
         // let rd = Kmer::get_reverse_complement_word(data, k);
         Self {
-            fw, rc
-            // fw: Kmer { data, k },
-            // rc: Kmer { data: rd, k },
+            fw,
+            rc, // fw: Kmer { data, k },
+                // rc: Kmer { data: rd, k },
         }
     }
 
@@ -204,7 +204,7 @@ impl From<CanonicalKmer> for String {
 impl std::fmt::Display for CanonicalKmer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let msg: String = self.clone().into();
-        write!(f, "{}", msg)
+        write!(f, "{msg}")
     }
 }
 
@@ -213,7 +213,7 @@ mod tests {
     use super::*;
     const K: u8 = 31;
 
-    //#[quickcheck]
+    #[quickcheck]
     fn swap_identity(word: u64) -> bool {
         let mut a = CanonicalKmer::from_u64(word, K);
         let b = a.clone();
@@ -222,7 +222,7 @@ mod tests {
         a == b
     }
 
-    //#[quickcheck]
+    #[quickcheck]
     fn equivalency(word: u64) -> bool {
         let canon_km = CanonicalKmer::from_u64(word, K);
         let mut canon_km2 = CanonicalKmer::from(canon_km.get_rc_mer());

@@ -19,12 +19,12 @@ impl DQMer {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MappedMinimizer {
-    word: u64,  // u64 representation
+    word: u64,      // u64 representation
     pub pos: usize, // position in sequence
 }
 
 impl MappedMinimizer {
-    pub fn as_u64(&self) -> u64{
+    pub fn as_u64(&self) -> u64 {
         self.word
     }
 }

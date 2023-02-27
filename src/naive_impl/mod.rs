@@ -3,6 +3,9 @@ pub mod canonical_kmer_iterator;
 mod kmer;
 
 pub mod hash;
+
+// Simple-sds does not compile on windows, so we make seq_vector an optional feature
+#[cfg(feature = "seq-vector")]
 pub mod seq_vector;
 
 // re-exports

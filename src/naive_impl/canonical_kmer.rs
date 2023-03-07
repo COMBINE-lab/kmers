@@ -171,6 +171,16 @@ impl From<Kmer> for CanonicalKmer {
     }
 }
 
+impl From<&Kmer> for CanonicalKmer {
+    #[inline]
+    fn from(km: &Kmer) -> Self {
+        Self {
+            rc: km.to_reverse_complement(),
+            fw: km.clone(),
+        }
+    }
+}
+
 impl From<String> for CanonicalKmer {
     fn from(s: String) -> Self {
         let fk = Kmer::from(s);

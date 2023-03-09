@@ -6,10 +6,12 @@
 
 use super::prelude::*;
 use super::CanonicalKmer;
+use serde::{Serialize, Deserialize};
 
 // holds what is essentially a pair of
 // km: the canonical k-mer on the read
 // pos: the offset on the read where this k-mer starts
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CanonicalKmerPos {
     km: CanonicalKmer,
     pos: i32,
@@ -29,6 +31,7 @@ impl CanonicalKmerPos {
 // It is capable of iterating over this sequence (skipping invalid
 // k-mers, e.g. k-mers containing `N`), and producing
 // a `CanonicalKmerPos` struct for all valid k-mers in `seq`.
+#[derive(Debug, Clone)]
 pub struct CanonicalKmerIterator<'a> {
     seq: &'a [u8],
     value_pair: CanonicalKmerPos,

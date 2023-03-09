@@ -3,7 +3,7 @@ use std::hash::BuildHasher;
 use super::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, Default, Debug, Clone, Ord, PartialOrd)]
+#[derive(Eq, Default, Debug, Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Kmer {
     pub k: u8,
     pub(crate) data: u64,
@@ -15,7 +15,7 @@ impl PartialEq for Kmer {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Serialize, Deserialize,)]
 pub enum Orientation {
     IsCanonical,
     NotCanononical,

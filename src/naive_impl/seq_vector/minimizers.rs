@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 use std::hash::BuildHasher;
 
 use super::super::hash::hash_one;
-use super::*;
 
 #[derive(Clone, Debug)]
 struct DQMer {
@@ -17,7 +16,7 @@ impl DQMer {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MappedMinimizer {
     word: u64,      // u64 representation
     pub pos: usize, // position in sequence

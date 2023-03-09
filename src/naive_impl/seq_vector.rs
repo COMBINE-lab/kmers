@@ -15,13 +15,13 @@ pub mod minimizers;
 #[allow(non_camel_case_types)]
 type km_size_t = usize;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq,  Serialize, Deserialize)]
 pub struct SeqVector {
     #[serde(with = "serde_compat")]
     data: RawVector,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SeqVectorSlice<'a> {
     len: usize,
     start_pos: usize,

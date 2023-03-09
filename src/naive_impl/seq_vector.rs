@@ -21,7 +21,7 @@ pub struct SeqVector {
     data: RawVector,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct SeqVectorSlice<'a> {
     len: usize,
     start_pos: usize,

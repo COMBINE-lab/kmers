@@ -138,9 +138,55 @@ impl SeqVector {
         }
     }
 
-    pub fn push_chars(&mut self, bytes: &[u8]) {
-        let first_word_len = bytes.len() % 32; // chars remaining
+    pub fn set_chars(&mut self, offset: usize, bytes: &[u8]) {
+        assert!(offset + bytes.len() < self.len());
+
+        let first_word_len = offset % 32; // chars remaining
         let (first, rest) = bytes.split_at(first_word_len);
+
+        let last_word_len  = rest.len() % 32;
+        let (rest, last) = rest.split_at(rest.len() - last_word_len);
+
+        let mut offset = offset;
+
+        if !first.is_empty() {
+            let first = Kmer::from(first).into_u64();
+            // push the first
+            unsafe {
+                self.data.set_int(offset * 2, first, first_word_len * 2);
+            }
+            offset += first_word_len;
+        }
+
+        // push the rest that is u64 aligned.
+        dbg!(&rest.len());
+        let chunks = rest.chunks(32);
+        for chunk in chunks {
+            let word = Kmer::from(chunk).into_u64();
+            unsafe {
+                self.data.set_int(offset * 2, word, chunk.len() * 2);
+            }
+            offset += chunk.len();
+        }
+
+        if !last.is_empty() {
+            let last = Kmer::from(last).into_u64();
+            // push the first
+            unsafe {
+                self.data.set_int(offset * 2, last, last_word_len * 2);
+            }
+        }
+    }
+
+    pub fn push_chars(&mut self, bytes: &[u8]) {
+        // push chars so that they are u64 aligned
+
+        let first_word_len = self.len() % 32; // chars remaining
+        let (first, rest) = bytes.split_at(first_word_len);
+
+        let last_word_len  = rest.len() % 32;
+        let (rest, last) = rest.split_at(last_word_len);
+
 
         if !first.is_empty() {
             let first = Kmer::from(first).into_u64();
@@ -158,6 +204,15 @@ impl SeqVector {
                 self.data.push_int(word, chunk.len() * 2);
             }
         }
+
+        if !last.is_empty() {
+            let last = Kmer::from(last).into_u64();
+            // push the first
+            unsafe {
+                self.data.push_int(last, last_word_len * 2);
+            }
+        }
+
     }
 }
 
@@ -336,6 +391,21 @@ mod test {
         sv.push_chars(last_c40.as_bytes());
         assert_eq!(sv.len(), 70);
         assert_eq!(sv.to_string(), first_a30 + &last_c40);
+    }
+
+    #[test]
+    fn set_chars() {
+        let mut sv = SeqVector::with_capacity(64);
+        let first_a30 = "A".repeat(30);
+        let last_c40 = "C".repeat(40);
+        sv.push_chars(first_a30.as_bytes());
+        sv.push_chars(last_c40.as_bytes());
+
+        let set_g40 = "G".repeat(40);
+        sv.set_chars(5, set_g40.as_bytes());
+
+        assert_eq!(sv.len(), 70);
+        assert_eq!(sv.to_string(), "A".repeat(5) + &"G".repeat(40) + &"C".repeat(25));
     }
 
     #[test]

@@ -154,7 +154,9 @@ impl SeqVector {
     pub fn set_chars(&mut self, offset: usize, bytes: &[u8]) {
         assert!(offset + bytes.len() < self.len());
 
-        let first_word_len = offset % 32; // chars remaining
+        let first_word_len = 32 - (offset % 32);
+        let first_word_len = usize::min(first_word_len, bytes.len());
+
         let (first, rest) = bytes.split_at(first_word_len);
 
         let last_word_len = rest.len() % 32;
@@ -194,12 +196,16 @@ impl SeqVector {
     pub fn push_chars(&mut self, bytes: &[u8]) {
         // push chars so that they are u64 aligned
 
-        let first_word_len = self.len() % 32; // chars remaining
+        dbg!(self.len(), bytes.len());
+        let first_word_len = 32 - (self.len() % 32);
+        let first_word_len = usize::min(first_word_len, bytes.len());
+
         let (first, rest) = bytes.split_at(first_word_len);
 
         let last_word_len = rest.len() % 32;
-        let (rest, last) = rest.split_at(last_word_len);
+        let (rest, last) = rest.split_at(rest.len() - last_word_len);
 
+        dbg!(first_word_len, rest.len(), last_word_len);
         if !first.is_empty() {
             let first = Kmer::from(first).into_u64();
             // push the first
@@ -429,6 +435,14 @@ mod test {
         assert_eq!(
             sv.to_string(),
             "A".repeat(15) + &"G".repeat(40) + &"A".repeat(15)
+        );
+
+        let mut sv = SeqVector::with_len(32);
+
+        sv.set_chars(1, "G".repeat(2).as_bytes());
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(1) + &"G".repeat(2) + &"A".repeat(29)
         );
     }
 

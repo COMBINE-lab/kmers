@@ -3,7 +3,7 @@ use std::hash::BuildHasher;
 
 use super::super::hash::hash_one;
 use super::SeqVectorSlice;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
 struct DQMer {
@@ -154,9 +154,9 @@ mod test {
     use std::collections::hash_map::RandomState;
     use std::collections::VecDeque;
 
-    use crate::naive_impl::hash::LexHasherState;
     use super::super::*;
     use super::*;
+    use crate::naive_impl::hash::LexHasherState;
 
     fn dqmers_from_hashes(hashes: &[u64]) -> Vec<DQMer> {
         hashes

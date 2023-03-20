@@ -15,7 +15,7 @@ impl PartialEq for Kmer {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Clone, Copy, Serialize, Deserialize,)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Orientation {
     IsCanonical,
     NotCanononical,

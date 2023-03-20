@@ -15,7 +15,7 @@ pub mod minimizers;
 #[allow(non_camel_case_types)]
 type km_size_t = usize;
 
-#[derive(Clone, Debug, Eq, PartialEq,  Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SeqVector {
     #[serde(with = "serde_compat")]
     data: RawVector,
@@ -144,7 +144,7 @@ impl SeqVector {
         let first_word_len = offset % 32; // chars remaining
         let (first, rest) = bytes.split_at(first_word_len);
 
-        let last_word_len  = rest.len() % 32;
+        let last_word_len = rest.len() % 32;
         let (rest, last) = rest.split_at(rest.len() - last_word_len);
 
         let mut offset = offset;
@@ -184,9 +184,8 @@ impl SeqVector {
         let first_word_len = self.len() % 32; // chars remaining
         let (first, rest) = bytes.split_at(first_word_len);
 
-        let last_word_len  = rest.len() % 32;
+        let last_word_len = rest.len() % 32;
         let (rest, last) = rest.split_at(last_word_len);
-
 
         if !first.is_empty() {
             let first = Kmer::from(first).into_u64();
@@ -212,7 +211,6 @@ impl SeqVector {
                 self.data.push_int(last, last_word_len * 2);
             }
         }
-
     }
 }
 
@@ -405,7 +403,10 @@ mod test {
         sv.set_chars(5, set_g40.as_bytes());
 
         assert_eq!(sv.len(), 70);
-        assert_eq!(sv.to_string(), "A".repeat(5) + &"G".repeat(40) + &"C".repeat(25));
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(5) + &"G".repeat(40) + &"C".repeat(25)
+        );
     }
 
     #[test]

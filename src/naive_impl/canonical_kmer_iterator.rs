@@ -6,7 +6,7 @@
 
 use super::prelude::*;
 use super::CanonicalKmer;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // holds what is essentially a pair of
 // km: the canonical k-mer on the read

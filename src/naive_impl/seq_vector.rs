@@ -110,6 +110,19 @@ impl SeqVector {
         }
     }
 
+    pub fn new() -> Self {
+        Self {
+            data: RawVector::new(),
+        }
+    }
+
+    pub fn with_len(len: usize) -> Self {
+        // initializes with all 0b00s, i.e. As.
+        Self {
+            data: RawVector::with_len(len * 2, false),
+        }
+    }
+
     pub fn slice(&self, start: usize, end: usize) -> SeqVectorSlice {
         self.as_slice().slice(start, end)
     }
@@ -406,6 +419,16 @@ mod test {
         assert_eq!(
             sv.to_string(),
             "A".repeat(5) + &"G".repeat(40) + &"C".repeat(25)
+        );
+
+        let mut sv = SeqVector::with_len(70);
+        assert_eq!(sv.len(), 70);
+        assert_eq!(sv.to_string(), "A".repeat(70),);
+
+        sv.set_chars(15, set_g40.as_bytes());
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(15) + &"G".repeat(40) + &"A".repeat(15)
         );
     }
 

@@ -174,7 +174,6 @@ impl SeqVector {
         }
 
         // push the rest that is u64 aligned.
-        dbg!(&rest.len());
         let chunks = rest.chunks(32);
         for chunk in chunks {
             let word = Kmer::from(chunk).into_u64();
@@ -196,7 +195,6 @@ impl SeqVector {
     pub fn push_chars(&mut self, bytes: &[u8]) {
         // push chars so that they are u64 aligned
 
-        dbg!(self.len(), bytes.len());
         let first_word_len = 32 - (self.len() % 32);
         let first_word_len = usize::min(first_word_len, bytes.len());
 
@@ -205,7 +203,6 @@ impl SeqVector {
         let last_word_len = rest.len() % 32;
         let (rest, last) = rest.split_at(rest.len() - last_word_len);
 
-        dbg!(first_word_len, rest.len(), last_word_len);
         if !first.is_empty() {
             let first = Kmer::from(first).into_u64();
             // push the first

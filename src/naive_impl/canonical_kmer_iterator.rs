@@ -11,8 +11,8 @@ use super::CanonicalKmer;
 // km: the canonical k-mer on the read
 // pos: the offset on the read where this k-mer starts
 pub struct CanonicalKmerPos {
-    km: CanonicalKmer,
-    pos: i32,
+    pub km: CanonicalKmer,
+    pub pos: i32,
 }
 
 impl CanonicalKmerPos {

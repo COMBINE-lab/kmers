@@ -6,7 +6,6 @@ use simple_sds::ops::Vector;
 use simple_sds::raw_vector::{AccessRaw, PushRaw, RawVector};
 
 use crate::naive_impl::Kmer;
-use simple_sds::serde_compat;
 
 use self::minimizers::{SeqVecMinimizerIter, SeqVecCanonicalMinimizerIter};
 
@@ -17,7 +16,6 @@ type km_size_t = usize;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SeqVector {
-    #[serde(with = "serde_compat")]
     data: RawVector,
 }
 

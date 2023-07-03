@@ -401,7 +401,7 @@ mod test {
         let sv = "A".repeat(1000);
         let sv = SeqVector::from(&sv);
         let nb = std::mem::size_of::<SeqVector>() * 8 + 2048;
-        assert_eq!(nb, sv.num_bits())
+        assert_eq!(nb, sv.num_bits());
     }
 
     #[test]

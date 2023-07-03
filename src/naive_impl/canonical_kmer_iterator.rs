@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 // pos: the offset on the read where this k-mer starts
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CanonicalKmerPos {
-    km: CanonicalKmer,
-    pos: i32,
+    pub km: CanonicalKmer,
+    pub pos: i32,
 }
 
 impl CanonicalKmerPos {

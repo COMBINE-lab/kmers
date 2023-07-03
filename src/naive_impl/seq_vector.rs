@@ -8,7 +8,7 @@ use simple_sds::raw_vector::{AccessRaw, PushRaw, RawVector};
 use crate::naive_impl::Kmer;
 use simple_sds::serde_compat;
 
-use self::minimizers::SeqVecMinimizerIter;
+use self::minimizers::{SeqVecMinimizerIter, SeqVecCanonicalMinimizerIter};
 
 pub mod minimizers;
 
@@ -78,9 +78,22 @@ impl SeqVectorSlice<'_> {
     ) -> SeqVecMinimizerIter<T> {
         SeqVecMinimizerIter::new(self.clone(), k, w, build_hasher)
     }
+
+    pub fn iter_canonical_minimizers<T: BuildHasher>(
+        &self,
+        k: km_size_t,
+        w: km_size_t,
+        build_hasher: T,
+    ) -> SeqVecCanonicalMinimizerIter<T> {
+        SeqVecCanonicalMinimizerIter::new(self.clone(), k, w, build_hasher)
+    }
 }
 
 impl SeqVector {
+    pub fn num_bits(&self) -> usize {
+        self.data.num_bits()
+    }
+
     pub fn len(&self) -> usize {
         self.data.len() / 2
     }
@@ -373,6 +386,23 @@ mod test {
 
     use super::super::hash::LexHasherState;
     use super::*;
+
+
+    #[test]
+    fn num_bits() {
+        let sv = SeqVector::with_capacity(64);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 128;
+        assert_eq!(nb, sv.num_bits());
+
+        let sv = SeqVector::with_capacity(33);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 128;
+        assert_eq!(nb, sv.num_bits());
+
+        let sv = "A".repeat(1000);
+        let sv = SeqVector::from(&sv);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 2048;
+        assert_eq!(nb, sv.num_bits())
+    }
 
     #[test]
     fn seq_slice_test() {

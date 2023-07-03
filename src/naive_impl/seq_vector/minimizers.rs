@@ -122,11 +122,122 @@ impl<'a, T: BuildHasher> SeqVecMinimizerIter<'a, T> {
     }
 }
 
+
+pub struct SeqVecCanonicalMinimizerIter<'a, T: BuildHasher> {
+    dq: VecDeque<DQMer>,
+    k: usize,
+    w: usize, // or "L"
+    curr_km_i: usize,
+    sv: SeqVectorSlice<'a>,
+    hash_seed: T,
+}
+
+impl<'a, T: BuildHasher> SeqVecCanonicalMinimizerIter<'a, T> {
+    // Dequeue invariant:
+    // Q = [ (Li, pi) ... (Lj, pj) ] at iteration ii
+    //   front                    back
+
+    // - each L_i is an L-mer in the (k-1)-prefix of kmer_ii
+    // - where each L_i can be a candidate minimizer in any suffix of kmer_ii
+    //   and thus could be a minimizer in any kmer succeeding kmer_ii with at least a L-mer overlap
+    // - i.e.:
+    //    - h(L_i) < h(L_j) iff i < j
+    //    - pj - pi
+    //
+
+    #[inline]
+    fn enqueue_dqmer(&mut self, dqmer: DQMer) {
+        // Could be a while loop to be safe...
+        // but we should never have more than one minimizer fall out of the window
+        // since only one successive lmer is added to the queue
+
+        if let Some(frontmer) = self.dq.front() {
+            if frontmer.pos < self.curr_km_i {
+                self.dq.pop_front();
+            }
+        }
+
+        while let Some(backmer) = self.dq.back() {
+            if backmer.hash <= dqmer.hash {
+                break;
+            } else {
+                self.dq.pop_back();
+            }
+        }
+
+        self.dq.push_back(dqmer);
+    }
+
+    #[inline]
+    fn next_dqmer(&mut self) -> DQMer {
+        // return last dqmer of curr_km_ii-th kmer
+        let pos = self.curr_km_i + self.k - self.w;
+        let lmer = self.sv.get_kmer_u64(pos, self.w);
+        todo!("FIXME make lmer canonical?");
+        let hash = hash_one(&self.hash_seed, lmer);
+        DQMer::new(lmer, pos, hash)
+    }
+
+    #[inline]
+    fn n_kmers(&self) -> usize {
+        self.sv.len() - self.k + 1
+    }
+
+    pub fn new(sv: SeqVectorSlice<'a>, k: usize, w: usize, hash_seed: T) -> Self {
+        // Insert lmers of the k-1 prefix
+        assert!(sv.len() >= k);
+        let dq = VecDeque::with_capacity(k - w + 1);
+
+        let mut iter = Self {
+            dq,
+            k,
+            w,
+            hash_seed,
+            sv: sv.clone(),
+            curr_km_i: 0,
+        };
+
+        for i in 0..(k - w) {
+            let lmer = sv.get_kmer_u64(i, w);
+            let hash = hash_one(&iter.hash_seed, lmer);
+
+            let dqmer = DQMer { lmer, pos: i, hash };
+
+            iter.enqueue_dqmer(dqmer)
+        }
+
+        iter
+    }
+}
+
 impl<T: BuildHasher> Iterator for SeqVecMinimizerIter<'_, T> {
     type Item = MappedMinimizer;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.curr_km_i < self.n_kmers() {
+            let dqmer = self.next_dqmer();
+            self.enqueue_dqmer(dqmer);
+            let dqmer = self.dq.front().unwrap();
+            let mmer = MappedMinimizer {
+                word: dqmer.lmer,
+                pos: dqmer.pos,
+            };
+            self.curr_km_i += 1;
+            Some(mmer)
+        } else {
+            None
+        }
+    }
+}
+
+
+impl<T: BuildHasher> Iterator for SeqVecCanonicalMinimizerIter<'_, T> {
+    type Item = MappedMinimizer;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr_km_i < self.n_kmers() {
+            // Same as non-canonical implementation
+            todo!("Fixme: do I need to return the whether the lmer has been canonicalized?");
             let dqmer = self.next_dqmer();
             self.enqueue_dqmer(dqmer);
             let dqmer = self.dq.front().unwrap();

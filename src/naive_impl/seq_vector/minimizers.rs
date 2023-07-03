@@ -205,11 +205,9 @@ impl<'a, T: BuildHasher> SeqVecCanonicalMinimizerIter<'a, T> {
         for i in 0..(k - w) {
             let lmer = {
                 let lmer = sv.get_kmer_u64(i, w);
-                dbg!(&lmer);
                 let lmer = CanonicalKmer::from_u64(lmer, w as u8);
                 lmer.get_canonical_word()
             };
-            dbg!(&lmer);
             let hash = hash_one(&iter.hash_seed, lmer);
 
             let dqmer = DQMer { lmer, pos: i, hash };

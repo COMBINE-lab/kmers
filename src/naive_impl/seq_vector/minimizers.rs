@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::hash::BuildHasher;
 
 use super::super::hash::hash_one;
+use super::super::CanonicalKmer;
 use super::SeqVectorSlice;
 use serde::{Deserialize, Serialize};
 
@@ -172,8 +173,11 @@ impl<'a, T: BuildHasher> SeqVecCanonicalMinimizerIter<'a, T> {
     fn next_dqmer(&mut self) -> DQMer {
         // return last dqmer of curr_km_ii-th kmer
         let pos = self.curr_km_i + self.k - self.w;
-        let lmer = self.sv.get_kmer_u64(pos, self.w);
-        todo!("FIXME make lmer canonical?");
+        let lmer = {
+            let lmer = self.sv.get_kmer_u64(pos, self.w);
+            let lmer = CanonicalKmer::from_u64(lmer, self.w as u8);
+            lmer.get_canonical_word()
+        };
         let hash = hash_one(&self.hash_seed, lmer);
         DQMer::new(lmer, pos, hash)
     }
@@ -197,8 +201,15 @@ impl<'a, T: BuildHasher> SeqVecCanonicalMinimizerIter<'a, T> {
             curr_km_i: 0,
         };
 
+        // enqueue the first (k-l) lmers.
         for i in 0..(k - w) {
-            let lmer = sv.get_kmer_u64(i, w);
+            let lmer = {
+                let lmer = sv.get_kmer_u64(i, w);
+                dbg!(&lmer);
+                let lmer = CanonicalKmer::from_u64(lmer, w as u8);
+                lmer.get_canonical_word()
+            };
+            dbg!(&lmer);
             let hash = hash_one(&iter.hash_seed, lmer);
 
             let dqmer = DQMer { lmer, pos: i, hash };
@@ -237,7 +248,6 @@ impl<T: BuildHasher> Iterator for SeqVecCanonicalMinimizerIter<'_, T> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.curr_km_i < self.n_kmers() {
             // Same as non-canonical implementation
-            todo!("Fixme: do I need to return the whether the lmer has been canonicalized?");
             let dqmer = self.next_dqmer();
             self.enqueue_dqmer(dqmer);
             let dqmer = self.dq.front().unwrap();
@@ -252,13 +262,6 @@ impl<T: BuildHasher> Iterator for SeqVecCanonicalMinimizerIter<'_, T> {
         }
     }
 }
-
-// Minimizer iterator does not know how many minimizers there are or its length
-// impl<T: BuildHasher> ExactSizeIterator for SeqVecMinimizerIter<'_, T> {
-//     fn len(&self) -> usize {
-//         self.sv.len() - self.curr_km_i - self.k + 1
-//     }
-// }
 
 #[cfg(test)]
 mod test {
@@ -397,6 +400,76 @@ mod test {
                 MappedMinimizer::new(aca, 1),
                 MappedMinimizer::new(aca, 3),
                 MappedMinimizer::new(aca, 3),
+            ]
+        )
+    }
+
+    #[test]
+    fn canonical_mmers_0b() {
+        // NB: MappedMinimizers do not indicate if minimizer orientation.
+        //     The only guarantee is that it is canonical (as represented in 2-bit encoding), 
+        //     but may occur on mapped position in fw or reverse orientation.
+        let sv = SeqVector::from(b"AAACAAA");
+        let iter = SeqVecCanonicalMinimizerIter::new(sv.as_slice(), 6, 3, LexHasherState::new(6));
+
+        let mmers: Vec<MappedMinimizer> = iter.collect();
+
+        assert_eq!(
+            mmers,
+            vec![MappedMinimizer::new(0, 0), MappedMinimizer::new(0, 4),]
+        )
+    }
+
+    #[test]
+    fn canonical_mmers_0a() {
+        // NB: MappedMinimizers do not indicate if minimizer orientation.
+        //     The only guarantee is that it is canonical (as represented in 2-bit encoding), 
+        //     but may occur on mapped position in fw or reverse orientation.
+        let sv = SeqVector::from(b"TTTGTTT");
+        let iter = SeqVecCanonicalMinimizerIter::new(sv.as_slice(), 6, 3, LexHasherState::new(6));
+
+        let mmers: Vec<MappedMinimizer> = iter.collect();
+
+        assert_eq!(
+            mmers,
+            vec![MappedMinimizer::new(0, 0), MappedMinimizer::new(0, 4),]
+        )
+    }
+
+    #[test]
+    fn canonical_mmers_2() {
+        let sv = SeqVector::from(b"AACCAAA");
+        let iter = SeqVecCanonicalMinimizerIter::new(sv.as_slice(), 5, 3, LexHasherState::new(5));
+
+        let mmers: Vec<MappedMinimizer> = iter.collect();
+
+        let aac = 0b010000;
+        let acc = 0b010100;
+        let aaa = 0b000000;
+        assert_eq!(
+            mmers,
+            vec![
+                MappedMinimizer::new(aac, 0),
+                MappedMinimizer::new(acc, 1),
+                MappedMinimizer::new(aaa, 4),
+            ]
+        )
+    }
+    #[test]
+    fn canonical_mmers_3() {
+        let sv = SeqVector::from(b"CCTTCCC");
+        let iter = SeqVecCanonicalMinimizerIter::new(sv.as_slice(), 5, 3, LexHasherState::new(5));
+
+        let mmers: Vec<MappedMinimizer> = iter.collect();
+
+        let aag = Kmer::from("AAG").into_u64(); // CTT @ 1
+        let ccc = Kmer::from("CCC").into_u64(); // CCC @ 4 
+        assert_eq!(
+            mmers,
+            vec![
+                MappedMinimizer::new(aag, 1),
+                MappedMinimizer::new(aag, 1),
+                MappedMinimizer::new(ccc, 4),
             ]
         )
     }

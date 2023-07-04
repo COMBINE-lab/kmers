@@ -73,6 +73,10 @@ impl Kmer {
         }
     }
 
+    pub fn to_canonical_word(&self) -> u64 {
+        self.to_canonical().into()
+    }
+
     #[inline]
     pub fn prepend_base_u8(&mut self, c: u8) -> Base {
         let r = (self.data >> (2 * self.k - 2)) & 0x03;
@@ -213,14 +217,15 @@ impl Kmer {
 
             let fw = Self::sub_kmer_word(word, k, pos, width);
             let fw = Kmer::from_u64(fw, width as u8);
-            
+            dbg!(fw.to_string(), fw.to_reverse_complement().to_string());
             let rc = fw.to_reverse_complement().into_u64();
+
             let fw = fw.into_u64();
 
             let fw_hash = super::hash::hash_one(state, fw);
             let rc_hash = super::hash::hash_one(state, rc);
             
-            let mmer_is_fw = fw_hash < rc_hash;
+            let mmer_is_fw = fw <= rc;
 
             let (mmer, hash) = if mmer_is_fw {
                     (fw, fw_hash)
@@ -321,6 +326,8 @@ impl std::fmt::Display for Kmer {
 mod test {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
+
+    use crate::naive_impl::hash::LexHasherState;
 
     use super::super::hash::hash_one;
     use super::*;
@@ -626,28 +633,59 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_minimizer_leftmost() {
+        let s = "AAAAAAAAG";
+        let km = Kmer::from(s);
+        for w in 1..s.len() {
+            let seed = LexHasherState::new(w);
+            let (_, o) = km.minimizer(w, &seed);
+            assert_eq!(o, 0)
+        }
+    }
+
+    #[test]
+    fn test_canonical_minimizer_leftmost() {
+        let s = "GTTTTTTTT";
+        let km = Kmer::from(s);
+        let seed = std::collections::hash_map::RandomState::new();
+        for w in 1..s.len() {
+            let seed = LexHasherState::new(w);
+            let (_, o) = km.minimizer(w, &seed);
+            assert_eq!(o, 0)
+        }
+    }
+
 
     #[test]
     fn test_canonical_minimizer() {
-        todo!();
+        let s = "ACTTGAT";
+        let km = Kmer::from(s);
+        let seed = std::collections::hash_map::RandomState::new();
 
-        // let s = "ACTTGAT";
-        // let km = Kmer::from(s);
-        // let seed = std::collections::hash_map::RandomState::new();
+        // loop over window sizes
+        for w in 1..s.len() {
+            let (mm, o, is_fw) = km.canonical_minimizer(w, &seed);
+            let h_min = hash_one(&seed, &mm);
 
-        // for w in 1..s.len() {
-        //     let (mm, o, is_fw) = km.canonical_minimizer(w, &seed);
-        //     let h_min = hash_one(&seed, &mm);
+            // check that return minimizer seq is canonical and <= than rc.
+            assert!(mm.into_u64() <= mm.to_reverse_complement().into_u64());
 
-        //     for i in 0..(s.len() - w + 1) {
-        //         let fw_wmer = km.sub_kmer(i, w);
-        //         let fw_h_not = hash_one(&seed, fw_wmer);
-        //         assert!(h_min <= h_not);
-        //     }
+            // check minimizer position and orientation
+            let wmer = Kmer::from(&s[o..(o + w)]);
+            if is_fw {
+                assert_eq!(wmer, mm);
+            } else {
+                assert_eq!(wmer.to_reverse_complement(), mm);
+            }
 
-        //     let wmer = Kmer::from(&s[o..(o + w)]);
-        //     assert_eq!(wmer, mm);
-        // }
+            for i in 0..(s.len() - w + 1) {
+                // check both canonical mmer hash is minimum
+                let wmer = km.sub_kmer(i, w).to_canonical_word();
+                let h_not = hash_one(&seed, wmer);
+                assert!(h_min <= h_not);
+            }
+        }
     }
 }
 

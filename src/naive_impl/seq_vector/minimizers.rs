@@ -317,7 +317,7 @@ pub struct CanonicalSuperKmerIterator<'a, T: BuildHasher> {
     w: usize, // or "L"
     curr_km_i: usize,
     sv: SeqVectorSlice<'a>,
-    curr_mmer: Option<MappedMinimizer>, // minimizer of kmer at curr_km_i.
+    next_mmer: Option<MappedMinimizer>, // next mmer to consume.
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -379,7 +379,7 @@ impl CanonicalSuperKmerOcc {
 impl<'a, T: BuildHasher> CanonicalSuperKmerIterator<'a, T> {
     pub fn new(sv: SeqVectorSlice<'a>, k: usize, w: usize, hash_seed: T) -> Self {
         let mut minimizers = CanonicalMinimizerIter::new(sv.clone(), k, w, hash_seed);
-        let curr_mmer = minimizers.next();
+        let next_mmer = minimizers.next();
 
         Self {
             minimizers: minimizers,
@@ -387,7 +387,7 @@ impl<'a, T: BuildHasher> CanonicalSuperKmerIterator<'a, T> {
             k,
             w,
             curr_km_i: 0,
-            curr_mmer,
+            next_mmer,
         }
     }
 }
@@ -396,21 +396,20 @@ impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
     type Item = CanonicalSuperKmerOcc;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let prev_mmer = self.curr_mmer.as_ref()?.clone();
+        let curr_mmer = self.next_mmer.as_ref()?.clone();
         let start_pos = self.curr_km_i;
         let mut n_kmers = 1;
 
         loop {
             // update the current minimiizer
-            let curr_mmer = self.minimizers.next();
+            self.next_mmer = self.minimizers.next();
             self.curr_km_i += 1;
 
-            if curr_mmer.is_none() || curr_mmer.as_ref().unwrap().pos != prev_mmer.pos {
+            if self.next_mmer.is_none() || self.next_mmer.as_ref().unwrap().pos != curr_mmer.pos {
                 // Either curr_mmer is diff from next, or curr_mmer is none
                 // and we are at last super-kmer.
-                self.curr_mmer = curr_mmer;
                 return Some(CanonicalSuperKmerOcc {
-                    mmer: prev_mmer,
+                    mmer: curr_mmer,
                     start: start_pos,
                     n_kmers,
                 });

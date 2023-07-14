@@ -14,6 +14,10 @@ impl MappedMinimizer {
         self.word
     }
 
+    pub fn pos(&self) -> usize {
+        self.pos
+    }
+
     pub fn from_parts(lmer: u64, pos: usize) -> Self {
         Self { word: lmer, pos }
     }

@@ -329,6 +329,27 @@ pub struct CanonicalSuperKmerOcc {
 }
 
 impl CanonicalSuperKmerOcc {
+    pub fn from_parts(mmer: MappedMinimizer, start: usize, n_kmers: u8) -> Self {
+        Self {
+            mmer,
+            start,
+            n_kmers,
+        }
+    }
+
+    pub fn inc_pos(&mut self, offset: usize) {
+        // increase the position of the super-k-mer by given offset.
+        self.mmer.pos += offset;
+        self.start += offset;
+    }
+
+    pub fn dec_pos(&mut self, offset: usize) {
+        // decrease the position of the super-k-mer by a given offset.
+        assert!(offset <= self.start);
+        self.mmer.pos -= offset;
+        self.start -= offset;
+    }
+
     #[inline]
     pub fn mmer_word(&self) -> u64 {
         self.mmer.word

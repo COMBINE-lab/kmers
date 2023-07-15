@@ -31,13 +31,13 @@ impl MappedMinimizer {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct LeftMin;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct RightMin;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct HashedMinimizer<T> {
     pub word: u64,
     pub hash: u64,
@@ -405,7 +405,13 @@ impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
             self.next_mmer = self.minimizers.next();
             self.curr_km_i += 1;
 
-            if self.next_mmer.is_none() || self.next_mmer.as_ref().unwrap().pos != curr_mmer.pos {
+            let keep_searching = self.next_mmer.as_ref().is_some_and(|next| {
+                (next.pos == curr_mmer.pos) && (next.word == curr_mmer.word)
+            });
+
+            if keep_searching {
+                n_kmers += 1;
+            } else {
                 // Either curr_mmer is diff from next, or curr_mmer is none
                 // and we are at last super-kmer.
                 return Some(CanonicalSuperKmerOcc {
@@ -413,9 +419,6 @@ impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
                     start: start_pos,
                     n_kmers,
                 });
-            } else {
-                //
-                n_kmers += 1;
             }
         }
     }
@@ -629,5 +632,40 @@ mod test_canonical {
                 n_kmers: 2,
             }
         )
+    }
+
+    #[test]
+    fn super_kmers2() {
+        // Super k-mers example with minimizers in same position but as rc and different
+        // minimizer seqs on adjacent kmers.
+        // k=5,t=3
+        // G G C T T A
+        // G G[C T T] (aagcc)  => with  mini seq aag since rc is canonical
+        //   G[C T T]A(taagc)  => with mini seq CTT since fw is canonical
+
+        let (k, w) = (5, 3);
+        let sv = SeqVector::from(b"GGCTTA");
+        let iter = CanonicalSuperKmerIterator::new(sv.as_slice(), k, w, LexHasherState::new(w));
+        let skms: Vec<CanonicalSuperKmerOcc> = iter.collect();
+
+        assert_eq!(skms.len(), 2);
+
+        assert_eq!(
+            skms[0],
+            CanonicalSuperKmerOcc {
+                mmer: MappedMinimizer::from_seq(b"aag", 2),
+                start: 0,
+                n_kmers: 1,
+            }
+        );
+
+        assert_eq!(
+            skms[1],
+            CanonicalSuperKmerOcc {
+                mmer: MappedMinimizer::from_seq(b"CTT", 2),
+                start: 1,
+                n_kmers: 1,
+            }
+        );
     }
 }

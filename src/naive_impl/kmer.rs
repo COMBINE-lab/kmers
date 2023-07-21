@@ -1,7 +1,5 @@
 use std::hash::BuildHasher;
 
-use crate::naive_impl::CanonicalKmer;
-
 use super::prelude::*;
 use serde::{Deserialize, Serialize};
 

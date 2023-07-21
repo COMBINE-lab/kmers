@@ -313,10 +313,10 @@ impl<T: BuildHasher> Iterator for CanonicalMinimizerIter<'_, T> {
 
 pub struct CanonicalSuperKmerIterator<'a, T: BuildHasher> {
     minimizers: CanonicalMinimizerIter<'a, T>,
-    k: usize,
-    w: usize, // or "L"
+    // k: usize,
+    // w: usize, // or "L"
     curr_km_i: usize,
-    sv: SeqVectorSlice<'a>,
+    // sv: SeqVectorSlice<'a>,
     next_mmer: Option<MappedMinimizer>, // next mmer to consume.
 }
 
@@ -382,10 +382,10 @@ impl<'a, T: BuildHasher> CanonicalSuperKmerIterator<'a, T> {
         let next_mmer = minimizers.next();
 
         Self {
-            minimizers: minimizers,
-            sv,
-            k,
-            w,
+            minimizers,
+            // sv,
+            // k,
+            // w,
             curr_km_i: 0,
             next_mmer,
         }
@@ -405,9 +405,10 @@ impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
             self.next_mmer = self.minimizers.next();
             self.curr_km_i += 1;
 
-            let keep_searching = self.next_mmer.as_ref().is_some_and(|next| {
-                (next.pos == curr_mmer.pos) && (next.word == curr_mmer.word)
-            });
+            let keep_searching = self
+                .next_mmer
+                .as_ref()
+                .is_some_and(|next| (next.pos == curr_mmer.pos) && (next.word == curr_mmer.word));
 
             if keep_searching {
                 n_kmers += 1;

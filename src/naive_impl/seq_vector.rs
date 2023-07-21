@@ -96,6 +96,12 @@ impl SeqVectorSlice<'_> {
     }
 }
 
+impl Default for SeqVector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SeqVector {
     pub fn num_bits(&self) -> usize {
         self.data.num_bits()
@@ -408,9 +414,13 @@ impl Iterator for SeqVecKmerIterator<'_> {
 
 #[cfg(test)]
 mod test {
-
-    use super::super::hash::LexHasherState;
     use super::*;
+
+    #[test]
+    fn new_eq_default() {
+        // Guard against future changes.
+        assert_eq!(SeqVector::new(), SeqVector::default())
+    }
 
     #[test]
     fn num_bits() {

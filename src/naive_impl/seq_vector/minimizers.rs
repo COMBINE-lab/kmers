@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MappedMinimizer {
     word: u64,  // u64 representation
-    pos: usize, // position in sequence
+    pub pos: usize, // position in sequence (pub because it can be useful to manipulate it)
 }
 
 impl MappedMinimizer {
@@ -14,9 +14,9 @@ impl MappedMinimizer {
         self.word
     }
 
-    pub fn pos(&self) -> usize {
-        self.pos
-    }
+    // pub fn pos(&self) -> usize {
+    //     self.pos
+    // }
 
     pub fn from_parts(lmer: u64, pos: usize) -> Self {
         Self { word: lmer, pos }

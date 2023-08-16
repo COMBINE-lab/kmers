@@ -7,7 +7,7 @@ use simple_sds::raw_vector::{AccessRaw, PushRaw, RawVector};
 
 use crate::naive_impl::Kmer;
 
-use self::minimizers::{CanonicalMinimizerIter, CanonicalSuperKmerIterator, MinimizerIterLeftMin};
+use self::minimizers::{CanonicalMinimizerIter, MinimizerIterLeftMin};
 
 pub mod minimizers;
 
@@ -86,14 +86,14 @@ impl SeqVectorSlice<'_> {
         CanonicalMinimizerIter::new(self.clone(), k, w, build_hasher)
     }
 
-    pub fn iter_canonical_super_kmers<T: BuildHasher>(
-        &self,
-        k: km_size_t,
-        w: km_size_t,
-        build_hasher: T,
-    ) -> CanonicalSuperKmerIterator<T> {
-        CanonicalSuperKmerIterator::new(self.clone(), k, w, build_hasher)
-    }
+    // pub fn iter_canonical_super_kmers<T: BuildHasher>(
+    //     &self,
+    //     k: km_size_t,
+    //     w: km_size_t,
+    //     build_hasher: T,
+    // ) -> CanonicalSuperKmerIterator<T> {
+    //     CanonicalSuperKmerIterator::new(self.clone(), k, w, build_hasher)
+    // }
 }
 
 impl Default for SeqVector {
@@ -180,14 +180,14 @@ impl SeqVector {
         CanonicalMinimizerIter::new(self.as_slice(), k, w, build_hasher)
     }
 
-    pub fn iter_canonical_super_kmers<T: BuildHasher>(
-        &self,
-        k: km_size_t,
-        w: km_size_t,
-        build_hasher: T,
-    ) -> CanonicalSuperKmerIterator<T> {
-        CanonicalSuperKmerIterator::new(self.as_slice(), k, w, build_hasher)
-    }
+    // pub fn iter_canonical_super_kmers<T: BuildHasher>(
+    //     &self,
+    //     k: km_size_t,
+    //     w: km_size_t,
+    //     build_hasher: T,
+    // ) -> CanonicalSuperKmerIterator<T> {
+    //     CanonicalSuperKmerIterator::new(self.as_slice(), k, w, build_hasher)
+    // }
 
     pub fn with_capacity(len: usize) -> Self {
         Self {

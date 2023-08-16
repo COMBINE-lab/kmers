@@ -289,7 +289,7 @@ impl<'a, T: BuildHasher> CanonicalMinimizerIter<'a, T> {
 }
 
 impl<T: BuildHasher> Iterator for CanonicalMinimizerIter<'_, T> {
-    type Item = MappedMinimizer;
+    type Item = (MappedMinimizer, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.curr_km_i < self.n_kmers() {
@@ -297,133 +297,142 @@ impl<T: BuildHasher> Iterator for CanonicalMinimizerIter<'_, T> {
 
             let km = self.sv.get_kmer(self.curr_km_i, self.k);
 
-            let mmer = if km.is_canonical() {
+            let is_fw_canonical = km.is_canonical();
+
+            let mmer = if is_fw_canonical {
                 self.fwq.front().unwrap().to_mapped_minimizer()
             } else {
                 self.rcq.front().unwrap().to_mapped_minimizer()
             };
 
             self.curr_km_i += 1;
-            Some(mmer)
+            Some((mmer, is_fw_canonical))
         } else {
             None
         }
     }
 }
 
-pub struct CanonicalSuperKmerIterator<'a, T: BuildHasher> {
-    minimizers: CanonicalMinimizerIter<'a, T>,
-    // k: usize,
-    // w: usize, // or "L"
-    curr_km_i: usize,
-    // sv: SeqVectorSlice<'a>,
-    next_mmer: Option<MappedMinimizer>, // next mmer to consume.
-}
+// pub struct CanonicalSuperKmerIterator<'a, T: BuildHasher> {
+//     minimizers: CanonicalMinimizerIter<'a, T>,
+//     // k: usize,
+//     // w: usize, // or "L"
+//     curr_km_i: usize,
+//     // sv: SeqVectorSlice<'a>,
+//     // next_mmer: Option<MappedMinimizer>, // next mmer to consume.
+// }
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct CanonicalSuperKmerOcc {
-    mmer: MappedMinimizer,
-    start: usize,
-    n_kmers: u8, // a little optimization to use u8 insead of usize
-                 // for external memory construction
-}
+// #[derive(Clone, PartialEq, Debug)]
+// pub struct CanonicalSuperKmerOcc {
+//     mmer: MappedMinimizer,
+//     start: usize,
+//     n_kmers: u8, // a little optimization to use u8 insead of usize
+//                  // for external memory construction
+// }
 
-impl CanonicalSuperKmerOcc {
-    pub fn from_parts(mmer: MappedMinimizer, start: usize, n_kmers: u8) -> Self {
-        Self {
-            mmer,
-            start,
-            n_kmers,
-        }
-    }
+// impl CanonicalSuperKmerOcc {
+//     pub fn from_parts(mmer: MappedMinimizer, start: usize, n_kmers: u8) -> Self {
+//         Self {
+//             mmer,
+//             start,
+//             n_kmers,
+//         }
+//     }
 
-    pub fn inc_pos(&mut self, offset: usize) {
-        // increase the position of the super-k-mer by given offset.
-        self.mmer.pos += offset;
-        self.start += offset;
-    }
+//     pub fn inc_pos(&mut self, offset: usize) {
+//         // increase the position of the super-k-mer by given offset.
+//         self.mmer.pos += offset;
+//         self.start += offset;
+//     }
 
-    pub fn dec_pos(&mut self, offset: usize) {
-        // decrease the position of the super-k-mer by a given offset.
-        assert!(offset <= self.start);
-        self.mmer.pos -= offset;
-        self.start -= offset;
-    }
+//     pub fn dec_pos(&mut self, offset: usize) {
+//         // decrease the position of the super-k-mer by a given offset.
+//         assert!(offset <= self.start);
+//         self.mmer.pos -= offset;
+//         self.start -= offset;
+//     }
 
-    #[inline]
-    pub fn mmer_word(&self) -> u64 {
-        self.mmer.word
-    }
+//     #[inline]
+//     pub fn mmer_word(&self) -> u64 {
+//         self.mmer.word
+//     }
 
-    #[inline]
-    pub fn mmer_pos(&self) -> usize {
-        self.mmer.pos
-    }
+//     #[inline]
+//     pub fn mmer_pos(&self) -> usize {
+//         self.mmer.pos
+//     }
 
-    #[inline]
-    pub fn mmer_offset(&self) -> usize {
-        self.mmer_pos() - self.start_pos()
-    }
+//     #[inline]
+//     pub fn mmer_offset(&self) -> usize {
+//         self.mmer_pos() - self.start_pos()
+//     }
 
-    #[inline]
-    pub fn start_pos(&self) -> usize {
-        self.start
-    }
+//     #[inline]
+//     pub fn start_pos(&self) -> usize {
+//         self.start
+//     }
 
-    #[inline]
-    pub fn n_kmers(&self) -> usize {
-        self.n_kmers as usize
-    }
-}
+//     #[inline]
+//     pub fn n_kmers(&self) -> usize {
+//         self.n_kmers as usize
+//     }
+// }
 
-impl<'a, T: BuildHasher> CanonicalSuperKmerIterator<'a, T> {
-    pub fn new(sv: SeqVectorSlice<'a>, k: usize, w: usize, hash_seed: T) -> Self {
-        let mut minimizers = CanonicalMinimizerIter::new(sv.clone(), k, w, hash_seed);
-        let next_mmer = minimizers.next();
+// impl<'a, T: BuildHasher> CanonicalSuperKmerIterator<'a, T> {
+//     pub fn new(sv: SeqVectorSlice<'a>, k: usize, w: usize, hash_seed: T) -> Self {
+//         let mut minimizers = CanonicalMinimizerIter::new(sv.clone(), k, w, hash_seed);
+//         // let next_mmer = minimizers.next();
 
-        Self {
-            minimizers,
-            // sv,
-            // k,
-            // w,
-            curr_km_i: 0,
-            next_mmer,
-        }
-    }
-}
+//         Self {
+//             minimizers,
+//             // sv,
+//             // k,
+//             // w,
+//             curr_km_i: 0,
+//             // next_mmer,
+//         }
+//     }
+// }
 
-impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
-    type Item = CanonicalSuperKmerOcc;
+// impl<'a, T: BuildHasher> Iterator for CanonicalSuperKmerIterator<'a, T> {
+//     type Item = CanonicalSuperKmerOcc;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let curr_mmer = self.next_mmer.as_ref()?.clone();
-        let start_pos = self.curr_km_i;
-        let mut n_kmers = 1;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         // let curr_mmer = self.next_mmer.as_ref()?.clone();
+//         let start_pos = self.curr_km_i;
+//         let mut n_kmers = 0;
+//         let mut prev_mm = None;
 
-        loop {
-            // update the current minimiizer
-            self.next_mmer = self.minimizers.next();
-            self.curr_km_i += 1;
+//         for curr_mm in self.minimizers.by_ref() {
+//             let curr_mm = Some(curr_mm);
+//             if !curr_mm == prev_mm
+//             prev_mmer = Some(curr_m);
+//         }
 
-            let keep_searching = self
-                .next_mmer
-                .as_ref()
-                .is_some_and(|next| (next.pos == curr_mmer.pos) && (next.word == curr_mmer.word));
+//         loop {
+//             // update the current minimiizer
+//             self.next_mmer = self.minimizers.next();
+//             self.curr_km_i += 1;
 
-            if keep_searching {
-                n_kmers += 1;
-            } else {
-                // Either curr_mmer is diff from next, or curr_mmer is none
-                // and we are at last super-kmer.
-                return Some(CanonicalSuperKmerOcc {
-                    mmer: curr_mmer,
-                    start: start_pos,
-                    n_kmers,
-                });
-            }
-        }
-    }
-}
+//             let keep_searching = self
+//                 .next_mmer
+//                 .as_ref()
+//                 .is_some_and(|next| (next.pos == curr_mmer.pos) && (next.word == curr_mmer.word));
+
+//             if keep_searching {
+//                 n_kmers += 1;
+//             } else {
+//                 // Either curr_mmer is diff from next, or curr_mmer is none
+//                 // and we are at last super-kmer.
+//                 return Some(CanonicalSuperKmerOcc {
+//                     mmer: curr_mmer,
+//                     start: start_pos,
+//                     n_kmers,
+//                 });
+//             }
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod test {
@@ -538,14 +547,14 @@ mod test_canonical {
         let sv = SeqVector::from(b"AAAAAAA");
         let iter = CanonicalMinimizerIter::new(sv.as_slice(), 5, 3, RandomState::new());
 
-        let mmers: Vec<MappedMinimizer> = iter.collect();
+        let mmers: Vec<(MappedMinimizer, bool)> = iter.collect();
 
         assert_eq!(
             mmers,
             vec![
-                MappedMinimizer::from_seq(b"AAA", 0),
-                MappedMinimizer::from_seq(b"AAA", 1),
-                MappedMinimizer::from_seq(b"AAA", 2),
+                (MappedMinimizer::from_seq(b"AAA", 0), true),
+                (MappedMinimizer::from_seq(b"AAA", 1), true),
+                (MappedMinimizer::from_seq(b"AAA", 2), true),
             ]
         )
     }
@@ -555,14 +564,14 @@ mod test_canonical {
         let sv = SeqVector::from(b"TTTTTTT");
         let iter = CanonicalMinimizerIter::new(sv.as_slice(), 5, 3, RandomState::new());
 
-        let mmers: Vec<MappedMinimizer> = iter.collect();
+        let mmers: Vec<(MappedMinimizer, bool)> = iter.collect();
 
         assert_eq!(
             mmers,
             vec![
-                MappedMinimizer::from_seq(b"AAA", 2),
-                MappedMinimizer::from_seq(b"AAA", 3),
-                MappedMinimizer::from_seq(b"AAA", 4),
+                (MappedMinimizer::from_seq(b"AAA", 2), false),
+                (MappedMinimizer::from_seq(b"AAA", 3), false),
+                (MappedMinimizer::from_seq(b"AAA", 4), false),
             ]
         )
     }
@@ -578,95 +587,95 @@ mod test_canonical {
         let (k, w) = (7, 3);
         let sv = SeqVector::from(b"TAAATTTC");
         let iter = CanonicalMinimizerIter::new(sv.as_slice(), k, w, LexHasherState::new(w));
-        let mmers: Vec<MappedMinimizer> = iter.collect();
+        let mmers: Vec<(MappedMinimizer, bool)> = iter.collect();
 
         assert_eq!(
             mmers,
             vec![
-                MappedMinimizer::from_seq(b"AAA", 4),
-                MappedMinimizer::from_seq(b"AAA", 1),
+                (MappedMinimizer::from_seq(b"AAA", 4), false),
+                (MappedMinimizer::from_seq(b"AAA", 1), true)
             ]
         )
     }
 
-    #[test]
-    fn super_kmers() {
-        // Super k-mers example
-        // K=7, t = 3
+    // #[test]
+    // fn super_kmers() {
+    //     // Super k-mers example
+    //     // K=7, t = 3
 
-        //                    : A G G G A A A G A A
-        //    AGGGAAA(tttccct): A G G G[A A A]       // s0
-        //    GGGAAAG(ctttccc):  [G G G]A A A G      // s1
-        //    GGAAAGA(tctttgg):     G G[A A A]G A    // s2
-        //    GAAAGAA(ttctttc):       G[A A A]G A A  // s2
+    //     //                    : A G G G A A A G A A
+    //     //    AGGGAAA(tttccct): A G G G[A A A]       // s0
+    //     //    GGGAAAG(ctttccc):  [G G G]A A A G      // s1
+    //     //    GGAAAGA(tctttgg):     G G[A A A]G A    // s2
+    //     //    GAAAGAA(ttctttc):       G[A A A]G A A  // s2
 
-        let (k, w) = (7, 3);
-        let sv = SeqVector::from(b"AGGGAAAGAA");
-        let iter = CanonicalSuperKmerIterator::new(sv.as_slice(), k, w, LexHasherState::new(w));
-        let skms: Vec<CanonicalSuperKmerOcc> = iter.collect();
+    //     let (k, w) = (7, 3);
+    //     let sv = SeqVector::from(b"AGGGAAAGAA");
+    //     let iter = CanonicalSuperKmerIterator::new(sv.as_slice(), k, w, LexHasherState::new(w));
+    //     let skms: Vec<CanonicalSuperKmerOcc> = iter.collect();
 
-        assert_eq!(skms.len(), 3);
+    //     assert_eq!(skms.len(), 3);
 
-        assert_eq!(
-            skms[0],
-            CanonicalSuperKmerOcc {
-                mmer: MappedMinimizer::from_seq(b"AAA", 4),
-                start: 0,
-                n_kmers: 1,
-            }
-        );
+    //     assert_eq!(
+    //         skms[0],
+    //         CanonicalSuperKmerOcc {
+    //             mmer: MappedMinimizer::from_seq(b"AAA", 4),
+    //             start: 0,
+    //             n_kmers: 1,
+    //         }
+    //     );
 
-        assert_eq!(
-            skms[1],
-            CanonicalSuperKmerOcc {
-                mmer: MappedMinimizer::from_seq(b"CCC", 1),
-                start: 1,
-                n_kmers: 1,
-            }
-        );
+    //     assert_eq!(
+    //         skms[1],
+    //         CanonicalSuperKmerOcc {
+    //             mmer: MappedMinimizer::from_seq(b"CCC", 1),
+    //             start: 1,
+    //             n_kmers: 1,
+    //         }
+    //     );
 
-        assert_eq!(
-            skms[2],
-            CanonicalSuperKmerOcc {
-                mmer: MappedMinimizer::from_seq(b"AAA", 4),
-                start: 2,
-                n_kmers: 2,
-            }
-        )
-    }
+    //     assert_eq!(
+    //         skms[2],
+    //         CanonicalSuperKmerOcc {
+    //             mmer: MappedMinimizer::from_seq(b"AAA", 4),
+    //             start: 2,
+    //             n_kmers: 2,
+    //         }
+    //     )
+    // }
 
-    #[test]
-    fn super_kmers2() {
-        // Super k-mers example with minimizers in same position but as rc and different
-        // minimizer seqs on adjacent kmers.
-        // k=5,t=3
-        // G G C T T A
-        // G G[C T T] (aagcc)  => with  mini seq aag since rc is canonical
-        //   G[C T T]A(taagc)  => with mini seq CTT since fw is canonical
+    // #[test]
+    // fn super_kmers2() {
+    //     // Super k-mers example with minimizers in same position but as rc and different
+    //     // minimizer seqs on adjacent kmers.
+    //     // k=5,t=3
+    //     // G G C T T A
+    //     // G G[C T T] (aagcc)  => with  mini seq aag since rc is canonical
+    //     //   G[C T T]A(taagc)  => with mini seq CTT since fw is canonical
 
-        let (k, w) = (5, 3);
-        let sv = SeqVector::from(b"GGCTTA");
-        let iter = CanonicalSuperKmerIterator::new(sv.as_slice(), k, w, LexHasherState::new(w));
-        let skms: Vec<CanonicalSuperKmerOcc> = iter.collect();
+    //     let (k, w) = (5, 3);
+    //     let sv = SeqVector::from(b"GGCTTA");
+    //     let iter = CanonicalSuperKmerIterator::new(sv.as_slice(), k, w, LexHasherState::new(w));
+    //     let skms: Vec<CanonicalSuperKmerOcc> = iter.collect();
 
-        assert_eq!(skms.len(), 2);
+    //     assert_eq!(skms.len(), 2);
 
-        assert_eq!(
-            skms[0],
-            CanonicalSuperKmerOcc {
-                mmer: MappedMinimizer::from_seq(b"aag", 2),
-                start: 0,
-                n_kmers: 1,
-            }
-        );
+    //     assert_eq!(
+    //         skms[0],
+    //         CanonicalSuperKmerOcc {
+    //             mmer: MappedMinimizer::from_seq(b"aag", 2),
+    //             start: 0,
+    //             n_kmers: 1,
+    //         }
+    //     );
 
-        assert_eq!(
-            skms[1],
-            CanonicalSuperKmerOcc {
-                mmer: MappedMinimizer::from_seq(b"CTT", 2),
-                start: 1,
-                n_kmers: 1,
-            }
-        );
-    }
+    //     assert_eq!(
+    //         skms[1],
+    //         CanonicalSuperKmerOcc {
+    //             mmer: MappedMinimizer::from_seq(b"CTT", 2),
+    //             start: 1,
+    //             n_kmers: 1,
+    //         }
+    //     );
+    // }
 }

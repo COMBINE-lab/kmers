@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MappedMinimizer {
-    word: u64,  // u64 representation
+    word: u64,      // u64 representation
     pub pos: usize, // position in sequence (pub because it can be useful to manipulate it)
 }
 

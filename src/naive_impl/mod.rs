@@ -1,5 +1,6 @@
 mod canonical_kmer;
 pub mod canonical_kmer_iterator;
+mod checked;
 mod kmer;
 
 pub mod hash;

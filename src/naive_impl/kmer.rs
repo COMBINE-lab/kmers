@@ -292,6 +292,16 @@ impl std::fmt::Display for Kmer {
     }
 }
 
+#[macro_export]
+macro_rules! kmer {
+    ($e:expr) => {
+        Kmer::from($e)
+    };
+    ($w:expr, $k:expr) => {
+        Kmer::from_u64($w, $k)
+    };
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::hash_map::DefaultHasher;
@@ -301,6 +311,12 @@ mod test {
 
     use super::super::hash::hash_one;
     use super::*;
+
+    #[test]
+    fn kmer_macro() {
+        assert_eq!(kmer!("ACTG"), Kmer::from("ACTG"));
+        assert_eq!(kmer!("TTTT"), kmer!(0b11_11_11_11, 4));
+    }
 
     #[quickcheck]
     fn rc_identity(word: u64) -> bool {

@@ -3,7 +3,7 @@ use std::hash::BuildHasher;
 use super::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, Default, Debug, Clone, Ord, PartialOrd)]
+#[derive(Eq, Default, Debug, Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Kmer {
     pub k: u8,
     pub(crate) data: u64,
@@ -15,7 +15,7 @@ impl PartialEq for Kmer {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Orientation {
     IsCanonical,
     NotCanononical,
@@ -52,6 +52,10 @@ impl Kmer {
         self.data
     }
 
+    pub fn k(&self) -> usize {
+        self.k as usize
+    }
+
     pub fn is_canonical(&self) -> bool {
         let rc = self.to_reverse_complement();
         *self <= rc
@@ -71,6 +75,10 @@ impl Kmer {
         } else {
             self.to_reverse_complement()
         }
+    }
+
+    pub fn to_canonical_word(&self) -> u64 {
+        self.to_canonical().into()
     }
 
     #[inline]
@@ -167,13 +175,28 @@ impl Kmer {
         (mm, o)
     }
 
+    pub fn canonical_minimizer<T: BuildHasher>(&self, width: usize, state: &T) -> (Self, usize) {
+        if self.is_canonical() {
+            self.minimizer(width, state)
+        } else {
+            // mini(g*) = mini(min(g, g')), if g != g*, then position has to be "reversed"
+            // e.g. TTT[AAA]T, k=7, w=3, o = 7 - 1 - 3 == 3
+            // e.g.  TTTA[AAA], k=7, w=3, o = 7 - 0 - 3 == 4
+            let rc = self.to_reverse_complement();
+            let (mm, o) = rc.minimizer(width, state);
+            let o = self.k() - width - o;
+            (mm, o)
+        }
+    }
+
     pub fn minimizer_word<T: BuildHasher>(
         word: u64,
         k: usize,
         width: usize,
         state: &T,
     ) -> (u64, usize) {
-        let mut min_mmer = Self::sub_kmer_word(word, k, 0, width);
+        // let mut min_mmer = Self::sub_kmer_word(word, k, 0, width);
+        let mut min_mmer = 0;
         let mut min_hash = u64::MAX;
         let mut offset = 0;
 
@@ -269,13 +292,31 @@ impl std::fmt::Display for Kmer {
     }
 }
 
+#[macro_export]
+macro_rules! kmer {
+    ($e:expr) => {
+        Kmer::from($e)
+    };
+    ($w:expr, $k:expr) => {
+        Kmer::from_u64($w, $k)
+    };
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
+    use crate::naive_impl::hash::LexHasherState;
+
     use super::super::hash::hash_one;
     use super::*;
+
+    #[test]
+    fn kmer_macro() {
+        assert_eq!(kmer!("ACTG"), Kmer::from("ACTG"));
+        assert_eq!(kmer!("TTTT"), kmer!(0b11_11_11_11, 4));
+    }
 
     #[quickcheck]
     fn rc_identity(word: u64) -> bool {
@@ -575,6 +616,56 @@ mod test {
 
             let wmer = Kmer::from(&s[o..(o + w)]);
             assert_eq!(wmer, mm);
+        }
+    }
+
+    #[test]
+    fn test_minimizer_leftmost() {
+        let s = "AAAAAAAAG";
+        let km = Kmer::from(s);
+        for w in 1..s.len() {
+            let seed = LexHasherState::new(w);
+            let (_, o) = km.minimizer(w, &seed);
+            assert_eq!(o, 0)
+        }
+    }
+
+    #[test]
+    fn test_canonical_minimizer_leftmost() {
+        let s = "GTTTTTTTT";
+        let km = Kmer::from(s);
+        for w in 1..(s.len() - 1) {
+            let seed = LexHasherState::new(w);
+            let (mm, o) = km.canonical_minimizer(w, &seed);
+
+            let true_pos = km.k() - w;
+            let true_mm = Kmer::from("A".repeat(w));
+            assert_eq!(true_mm, mm);
+            assert_eq!(true_pos, o);
+        }
+    }
+
+    #[test]
+    fn test_canonical_minimizer() {
+        let s = "ACTTGAT";
+        let km = Kmer::from(s);
+        assert!(km.is_canonical());
+        let seed = std::collections::hash_map::RandomState::new();
+
+        // todo!();
+        // loop over window sizes
+        for w in 1..s.len() {
+            let c_mm = km.canonical_minimizer(w, &seed);
+            let mm = km.to_canonical().minimizer(w, &seed);
+            assert_eq!(c_mm, mm);
+        }
+
+        let km = km.to_reverse_complement();
+        for w in 1..s.len() {
+            let (c_mm, o) = km.canonical_minimizer(w, &seed);
+            let c_mm = (c_mm, km.k() - w - o);
+            let mm = km.to_canonical().minimizer(w, &seed);
+            assert_eq!(c_mm, mm);
         }
     }
 }

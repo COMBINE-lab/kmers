@@ -4,14 +4,14 @@ use super::Kmer;
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MatchType {
     NoMatch,
     IdentityMatch,
     TwinMatch,
 }
 
-#[derive(Eq, PartialEq, Default, Debug, Clone, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Default, Debug, Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct CanonicalKmer {
     fw: Kmer,
     rc: Kmer,
@@ -167,6 +167,16 @@ impl From<Kmer> for CanonicalKmer {
         Self {
             rc: km.to_reverse_complement(),
             fw: km,
+        }
+    }
+}
+
+impl From<&Kmer> for CanonicalKmer {
+    #[inline]
+    fn from(km: &Kmer) -> Self {
+        Self {
+            rc: km.to_reverse_complement(),
+            fw: km.clone(),
         }
     }
 }

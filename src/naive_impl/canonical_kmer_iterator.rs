@@ -6,17 +6,32 @@
 
 use super::prelude::*;
 use super::CanonicalKmer;
+use serde::{Deserialize, Serialize};
 
 // holds what is essentially a pair of
 // km: the canonical k-mer on the read
 // pos: the offset on the read where this k-mer starts
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CanonicalKmerPos {
     pub km: CanonicalKmer,
-    pub pos: i32,
+    pub(super) pos: i32, // FIXME: change to use Wrapping<...>
 }
 
 impl CanonicalKmerPos {
-    fn new(k: u8) -> Self {
+    pub fn new(km: CanonicalKmer, pos: usize) -> Self {
+        Self {
+            km,
+            pos: pos as i32,
+        }
+    }
+
+    pub fn pos(&self) -> usize {
+        self.pos as usize
+    }
+}
+
+impl CanonicalKmerPos {
+    fn blank_of_size(k: u8) -> Self {
         Self {
             km: CanonicalKmer::blank_of_size(k),
             pos: -1i32,
@@ -29,6 +44,7 @@ impl CanonicalKmerPos {
 // It is capable of iterating over this sequence (skipping invalid
 // k-mers, e.g. k-mers containing `N`), and producing
 // a `CanonicalKmerPos` struct for all valid k-mers in `seq`.
+#[derive(Debug, Clone)]
 pub struct CanonicalKmerIterator<'a> {
     seq: &'a [u8],
     value_pair: CanonicalKmerPos,
@@ -72,7 +88,7 @@ impl<'slice> CanonicalKmerIterator<'slice> {
     pub fn from_u8_slice(s: &'slice [u8], k: u8) -> CanonicalKmerIterator {
         let mut r = Self {
             seq: s,
-            value_pair: CanonicalKmerPos::new(k),
+            value_pair: CanonicalKmerPos::blank_of_size(k),
             invalid: false,
             last_invalid: -1i32,
             k: k as i32,
@@ -113,6 +129,20 @@ impl<'slice> CanonicalKmerIterator<'slice> {
     #[inline]
     pub fn get(&self) -> &CanonicalKmerPos {
         &self.value_pair
+    }
+}
+
+impl Iterator for CanonicalKmerIterator<'_> {
+    type Item = CanonicalKmerPos;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.exhausted() {
+            None
+        } else {
+            let item = Some(self.get().clone());
+            self.inc();
+            item
+        }
     }
 }
 
@@ -203,5 +233,18 @@ mod tests {
 
         ck_iter.inc();
         assert!(ck_iter.exhausted());
+    }
+
+    #[test]
+    fn test_iter() {
+        let r = b"NAAANTTT";
+        let k = 3;
+        let ck_iter = CanonicalKmerIterator::from_u8_slice(r, k);
+        let kms: Vec<CanonicalKmerPos> = ck_iter.collect();
+        let kws = vec![
+            CanonicalKmerPos::new(CanonicalKmer::from("AAA"), 1),
+            CanonicalKmerPos::new(CanonicalKmer::from("TTT"), 5),
+        ];
+        assert_eq!(kms, kws)
     }
 }

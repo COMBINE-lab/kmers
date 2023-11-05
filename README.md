@@ -13,6 +13,7 @@ potentially interested parties via [twitter](https://twitter.com/nomad421/status
   * [Pierre Marijon](https://github.com/natir)
   * [Luiz Irber](https://github.com/luizirber)
   * [Rob Patro](https://github.com/rob-p)
+  * [Jason Fan](https://github.com/theJasonFan)
 
 ## Minimum supported Rust version
 

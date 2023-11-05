@@ -2,13 +2,15 @@
 
 /* crate use */
 use bit_field::BitArray;
+use serde::{Deserialize, Serialize};
 use std::u32;
 
 /* project use */
 use crate::encoding;
 
 /// Struct to store and use kmer
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(bound = "[P; B]: Serialize + for<'a> Deserialize<'a>")]
 pub struct Kmer<P, const K: usize, const B: usize> {
     array: [P; B],
 }

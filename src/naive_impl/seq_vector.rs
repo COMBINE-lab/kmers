@@ -6,18 +6,16 @@ use simple_sds::ops::Vector;
 use simple_sds::raw_vector::{AccessRaw, PushRaw, RawVector};
 
 use crate::naive_impl::Kmer;
-use simple_sds::serde_compat;
 
-use self::minimizers::SeqVecMinimizerIter;
+use self::minimizers::{CanonicalMinimizerIter, MinimizerIterLeftMin};
 
 pub mod minimizers;
 
 #[allow(non_camel_case_types)]
 type km_size_t = usize;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SeqVector {
-    #[serde(with = "serde_compat")]
     data: RawVector,
 }
 
@@ -75,12 +73,40 @@ impl SeqVectorSlice<'_> {
         k: km_size_t,
         w: km_size_t,
         build_hasher: T,
-    ) -> SeqVecMinimizerIter<T> {
-        SeqVecMinimizerIter::new(self.clone(), k, w, build_hasher)
+    ) -> MinimizerIterLeftMin<T> {
+        MinimizerIterLeftMin::new(self.clone(), k, w, build_hasher)
+    }
+
+    pub fn iter_canonical_minimizers<T: BuildHasher>(
+        &self,
+        k: km_size_t,
+        w: km_size_t,
+        build_hasher: T,
+    ) -> CanonicalMinimizerIter<T> {
+        CanonicalMinimizerIter::new(self.clone(), k, w, build_hasher)
+    }
+
+    // pub fn iter_canonical_super_kmers<T: BuildHasher>(
+    //     &self,
+    //     k: km_size_t,
+    //     w: km_size_t,
+    //     build_hasher: T,
+    // ) -> CanonicalSuperKmerIterator<T> {
+    //     CanonicalSuperKmerIterator::new(self.clone(), k, w, build_hasher)
+    // }
+}
+
+impl Default for SeqVector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl SeqVector {
+    pub fn num_bits(&self) -> usize {
+        self.data.num_bits()
+    }
+
     pub fn len(&self) -> usize {
         self.data.len() / 2
     }
@@ -110,6 +136,19 @@ impl SeqVector {
         }
     }
 
+    pub fn new() -> Self {
+        Self {
+            data: RawVector::new(),
+        }
+    }
+
+    pub fn with_len(len: usize) -> Self {
+        // initializes with all 0b00s, i.e. As.
+        Self {
+            data: RawVector::with_len(len * 2, false),
+        }
+    }
+
     pub fn slice(&self, start: usize, end: usize) -> SeqVectorSlice {
         self.as_slice().slice(start, end)
     }
@@ -128,9 +167,27 @@ impl SeqVector {
         k: km_size_t,
         w: km_size_t,
         build_hasher: T,
-    ) -> SeqVecMinimizerIter<T> {
-        SeqVecMinimizerIter::new(self.as_slice(), k, w, build_hasher)
+    ) -> MinimizerIterLeftMin<T> {
+        MinimizerIterLeftMin::new(self.as_slice(), k, w, build_hasher)
     }
+
+    pub fn iter_canonical_minimizers<T: BuildHasher>(
+        &self,
+        k: km_size_t,
+        w: km_size_t,
+        build_hasher: T,
+    ) -> CanonicalMinimizerIter<T> {
+        CanonicalMinimizerIter::new(self.as_slice(), k, w, build_hasher)
+    }
+
+    // pub fn iter_canonical_super_kmers<T: BuildHasher>(
+    //     &self,
+    //     k: km_size_t,
+    //     w: km_size_t,
+    //     build_hasher: T,
+    // ) -> CanonicalSuperKmerIterator<T> {
+    //     CanonicalSuperKmerIterator::new(self.as_slice(), k, w, build_hasher)
+    // }
 
     pub fn with_capacity(len: usize) -> Self {
         Self {
@@ -138,9 +195,57 @@ impl SeqVector {
         }
     }
 
-    pub fn push_chars(&mut self, bytes: &[u8]) {
-        let first_word_len = bytes.len() % 32; // chars remaining
+    pub fn set_chars(&mut self, offset: usize, bytes: &[u8]) {
+        assert!(offset + bytes.len() <= self.len());
+
+        let first_word_len = 32 - (offset % 32);
+        let first_word_len = usize::min(first_word_len, bytes.len());
+
         let (first, rest) = bytes.split_at(first_word_len);
+
+        let last_word_len = rest.len() % 32;
+        let (rest, last) = rest.split_at(rest.len() - last_word_len);
+
+        let mut offset = offset;
+
+        if !first.is_empty() {
+            let first = Kmer::from(first).into_u64();
+            // push the first
+            unsafe {
+                self.data.set_int(offset * 2, first, first_word_len * 2);
+            }
+            offset += first_word_len;
+        }
+
+        // push the rest that is u64 aligned.
+        let chunks = rest.chunks(32);
+        for chunk in chunks {
+            let word = Kmer::from(chunk).into_u64();
+            unsafe {
+                self.data.set_int(offset * 2, word, chunk.len() * 2);
+            }
+            offset += chunk.len();
+        }
+
+        if !last.is_empty() {
+            let last = Kmer::from(last).into_u64();
+            // push the first
+            unsafe {
+                self.data.set_int(offset * 2, last, last_word_len * 2);
+            }
+        }
+    }
+
+    pub fn push_chars(&mut self, bytes: &[u8]) {
+        // push chars so that they are u64 aligned
+
+        let first_word_len = 32 - (self.len() % 32);
+        let first_word_len = usize::min(first_word_len, bytes.len());
+
+        let (first, rest) = bytes.split_at(first_word_len);
+
+        let last_word_len = rest.len() % 32;
+        let (rest, last) = rest.split_at(rest.len() - last_word_len);
 
         if !first.is_empty() {
             let first = Kmer::from(first).into_u64();
@@ -156,6 +261,14 @@ impl SeqVector {
             let word = Kmer::from(chunk).into_u64();
             unsafe {
                 self.data.push_int(word, chunk.len() * 2);
+            }
+        }
+
+        if !last.is_empty() {
+            let last = Kmer::from(last).into_u64();
+            // push the first
+            unsafe {
+                self.data.push_int(last, last_word_len * 2);
             }
         }
     }
@@ -301,9 +414,29 @@ impl Iterator for SeqVecKmerIterator<'_> {
 
 #[cfg(test)]
 mod test {
-
-    use super::super::hash::LexHasherState;
     use super::*;
+
+    #[test]
+    fn new_eq_default() {
+        // Guard against future changes.
+        assert_eq!(SeqVector::new(), SeqVector::default())
+    }
+
+    #[test]
+    fn num_bits() {
+        let sv = SeqVector::with_capacity(64);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 128;
+        assert_eq!(nb, sv.num_bits());
+
+        let sv = SeqVector::with_capacity(33);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 128;
+        assert_eq!(nb, sv.num_bits());
+
+        let sv = "A".repeat(1000);
+        let sv = SeqVector::from(&sv);
+        let nb = std::mem::size_of::<SeqVector>() * 8 + 2048;
+        assert_eq!(nb, sv.num_bits());
+    }
 
     #[test]
     fn seq_slice_test() {
@@ -339,32 +472,50 @@ mod test {
     }
 
     #[test]
-    fn iter_kmers() {
-        let s = b"ACTTGAT";
-        let sv = SeqVector::from(s);
-        let mers = vec!["act", "ctt", "ttg", "tga", "gat"];
+    fn set_chars() {
+        let mut sv = SeqVector::with_capacity(64);
+        let first_a30 = "A".repeat(30);
+        let last_c40 = "C".repeat(40);
+        sv.push_chars(first_a30.as_bytes());
+        sv.push_chars(last_c40.as_bytes());
 
-        let kmers: Vec<String> = sv.iter_kmers(3).map(|km| km.to_string()).collect();
-        assert_eq!(kmers, mers);
+        let set_g40 = "G".repeat(40);
+        sv.set_chars(5, set_g40.as_bytes());
 
-        let kmers: Vec<String> = sv
-            .slice(1, sv.len() - 1)
-            .iter_kmers(3)
-            .map(|km| km.to_string())
-            .collect();
-        assert_eq!(kmers, mers[1..mers.len() - 1]);
+        assert_eq!(sv.len(), 70);
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(5) + &"G".repeat(40) + &"C".repeat(25)
+        );
+
+        let mut sv = SeqVector::with_len(70);
+        assert_eq!(sv.len(), 70);
+        assert_eq!(sv.to_string(), "A".repeat(70),);
+
+        sv.set_chars(15, set_g40.as_bytes());
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(15) + &"G".repeat(40) + &"A".repeat(15)
+        );
+
+        let mut sv = SeqVector::with_len(32);
+
+        sv.set_chars(1, "G".repeat(2).as_bytes());
+        sv.set_chars(3, "C".repeat(29).as_bytes());
+
+        assert_eq!(
+            sv.to_string(),
+            "A".repeat(1) + &"G".repeat(2) + &"C".repeat(29)
+        );
+
+        sv.set_chars(0, "C".repeat(32).as_bytes());
+        assert_eq!(sv.to_string(), "C".repeat(32),);
     }
 
     #[test]
-    fn iter_minimizers() {
+    fn iter_kmers() {
         let s = b"ACTTGAT";
         let sv = SeqVector::from(s);
-        let k = 5;
-        let w = 3;
-        let build_hasher = LexHasherState::new(w);
-
-        let _mmers = sv.iter_minimizers(k, w, build_hasher);
-
         let mers = vec!["act", "ctt", "ttg", "tga", "gat"];
 
         let kmers: Vec<String> = sv.iter_kmers(3).map(|km| km.to_string()).collect();

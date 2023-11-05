@@ -10,7 +10,7 @@ edition = "2021"
 bit_field = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 num = "0.4.0"
-simple-sds = {git = "https://github.com/thejasonfan/simple-sds", branch = "simpler_serde_compat", optional = true }
+simple-sds = {git = "https://github.com/COMBINE-lab/simple-sds", branch = "simpler_serde_compat", optional = true }
 
 [features]
 seq-vector = ["dep:simple-sds"]
